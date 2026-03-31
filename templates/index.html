@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Undriven</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:        #f9f9f8;
+      --surface:   #ffffff;
+      --border:    #e5e5e3;
+      --text:      #1a1a18;
+      --muted:     #6b6b68;
+      --accent:    #2d6a4f;
+      --accent-lt: #d8f3e3;
+      --danger:    #c0392b;
+      --mono:      'JetBrains Mono', monospace;
+      --sans:      'Inter', sans-serif;
+      --radius:    10px;
+      --shadow:    0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+
+    /* ── Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -.02em;
+    }
+
+    .header-left p {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-top: .15rem;
+    }
+
+    .sync-badge {
+      font-family: var(--mono);
+      font-size: .75rem;
+      padding: .3rem .7rem;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .sync-badge.new {
+      background: var(--accent-lt);
+      color: var(--accent);
+    }
+
+    .sync-badge.uptodate {
+      background: var(--border);
+      color: var(--muted);
+    }
+
+    .sync-badge.error {
+      background: #fdecea;
+      color: var(--danger);
+    }
+
+    /* ── Hero stats ── */
+    .hero-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.25rem 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .stat-card .value {
+      font-family: var(--mono);
+      font-size: 2rem;
+      font-weight: 500;
+      margin-top: .3rem;
+      line-height: 1;
+      color: var(--accent);
+    }
+
+    .stat-card .value.text-val {
+      font-size: 1.4rem;
+    }
+
+    /* ── Charts row ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 1.1rem;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 200px;
+    }
+
+    /* ── Mode breakdown ── */
+    .mode-rows { display: flex; flex-direction: column; gap: .65rem; }
+
+    .mode-row { display: grid; grid-template-columns: 80px 1fr 56px; align-items: center; gap: .6rem; }
+
+    .mode-label {
+      font-size: .8rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: width .4s ease;
+    }
+
+    .mode-val {
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    /* ── Table ── */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    th {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      font-weight: 500;
+      text-align: left;
+      padding: .5rem .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: .65rem .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td.mono { font-family: var(--mono); font-size: .84rem; }
+
+    .empty-row {
+      font-size: .85rem;
+      color: var(--muted);
+      padding: 1.5rem .75rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 720px) {
+      .hero-row { grid-template-columns: repeat(2, 1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 420px) {
+      .hero-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>Undriven</h1>
+      <p>car miles replaced by human-powered &amp; transit trips</p>
+    </div>
+
+    {% if sync.errors > 0 and sync.processed == 0 %}
+      <span class="sync-badge error">⚠ {{ sync.errors }} error{{ 's' if sync.errors != 1 }}</span>
+    {% elif sync.processed > 0 %}
+      <span class="sync-badge new">+{{ sync.processed }} new trip{{ 's' if sync.processed != 1 }} synced
+        {%- if sync.errors %} &middot; {{ sync.errors }} error{{ 's' if sync.errors != 1 }}{% endif %}</span>
+    {% else %}
+      <span class="sync-badge uptodate">up to date</span>
+    {% endif %}
+  </header>
+
+  <!-- Hero stats -->
+  <div class="hero-row">
+    <div class="stat-card">
+      <div class="label">Miles Replaced</div>
+      <div class="value">{{ "%.1f"|format(summary.total_miles) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">CO₂ Not Emitted</div>
+      <div class="value">{{ "%.1f"|format(summary.total_co2_kg) }}<span style="font-size:.9rem;color:var(--muted);margin-left:.25rem">kg</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Trips Logged</div>
+      <div class="value">{{ summary.total_trips }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Top Mode</div>
+      <div class="value text-val">{{ summary.top_mode }}</div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="charts-row">
+
+    <!-- Weekly bar chart -->
+    <div class="card">
+      <div class="card-title">Miles Replaced — Last 12 Weeks</div>
+      <div class="chart-wrap">
+        <canvas id="weeklyChart"></canvas>
+      </div>
+    </div>
+
+    <!-- By-mode breakdown -->
+    <div class="card">
+      <div class="card-title">By Mode</div>
+      {% if summary.by_mode %}
+        {% set max_miles = summary.by_mode[0].miles %}
+        <div class="mode-rows">
+          {% for m in summary.by_mode %}
+          <div class="mode-row">
+            <span class="mode-label" title="{{ m.mode }}">{{ m.mode }}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:{{ ((m.miles / max_miles) * 100) | int }}%"></div>
+            </div>
+            <span class="mode-val">{{ "%.1f"|format(m.miles) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="color:var(--muted);font-size:.85rem">No trips yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- By vehicle table -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:.75rem">By Vehicle</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Vehicle</th>
+            <th>Miles Replaced</th>
+            <th>CO₂ Saved (kg)</th>
+            <th>CO₂ Saved (lbs)</th>
+            <th>Gallons Not Burned</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if summary.by_car %}
+            {% for car in summary.by_car %}
+            <tr>
+              <td>{{ car.car_name }}</td>
+              <td class="mono">{{ "%.1f"|format(car.miles) }}</td>
+              <td class="mono">{{ "%.1f"|format(car.co2_kg) }}</td>
+              <td class="mono">{{ "%.1f"|format(car.co2_kg * 2.20462) }}</td>
+              <td class="mono">
+                {% if config_cars[car.car_name] is defined %}
+                  {{ "%.1f"|format(car.miles / config_cars[car.car_name].mpg) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="empty-row">No vehicle data yet. Add trips to your sheet to get started.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /.page -->
+
+<script>
+  const weeklyData = {{ summary.over_time | tojson }};
+
+  const ctx = document.getElementById('weeklyChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: weeklyData.map(w => w.week),
+      datasets: [{
+        label: 'Miles',
+        data: weeklyData.map(w => w.miles),
+        backgroundColor: 'rgba(45, 106, 79, 0.75)',
+        borderColor: 'rgba(45, 106, 79, 1)',
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y.toFixed(1)} mi · ${weeklyData[ctx.dataIndex].trips} trip${weeklyData[ctx.dataIndex].trips !== 1 ? 's' : ''}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { family: "'JetBrains Mono', monospace", size: 10 },
+            color: '#6b6b68',
+            maxRotation: 45,
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#e5e5e3' },
+          ticks: {
+            font: { family: "'JetBrains Mono', monospace", size: 10 },
+            color: '#6b6b68',
+          }
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>

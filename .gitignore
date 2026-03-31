@@ -1,0 +1,8 @@
+credentials.json
+trips.db
+trips.db-shm
+trips.db-wal
+.venv/
+__pycache__/
+*.pyc
+.env
