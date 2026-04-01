@@ -15,63 +15,37 @@ def init_db():
     with _connect() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS trips (
-                id       INTEGER PRIMARY KEY,
-                sheet_row INTEGER UNIQUE,
-                date     TEXT,
+                id        INTEGER PRIMARY KEY,
+                date      TEXT,
                 start_loc TEXT,
-                end_loc  TEXT,
-                mode     TEXT,
-                cars_raw TEXT,
-                miles    REAL,
-                notes    TEXT
+                end_loc   TEXT,
+                mode      TEXT,
+                car_name  TEXT,
+                miles     REAL,
+                co2_kg    REAL,
+                notes     TEXT
             )
         """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS trip_cars (
-                id       INTEGER PRIMARY KEY,
-                trip_id  INTEGER REFERENCES trips(id),
-                car_name TEXT,
-                occupants INTEGER,
-                miles    REAL,
-                co2_kg   REAL
-            )
-        """)
-
-
-def get_known_sheet_rows() -> set:
-    with _connect() as conn:
-        rows = conn.execute("SELECT sheet_row FROM trips").fetchall()
-    return {r["sheet_row"] for r in rows}
 
 
 def insert_trip(
-    sheet_row: int,
     date: str,
     start_loc: str,
     end_loc: str,
     mode: str,
-    cars_raw: str,
+    car_name: str,
     miles: float,
+    co2_kg: float,
     notes: str,
-    cars: list,  # list of {car_name, occupants, co2_kg}
 ):
     with _connect() as conn:
-        cur = conn.execute(
+        conn.execute(
             """
-            INSERT INTO trips (sheet_row, date, start_loc, end_loc, mode, cars_raw, miles, notes)
+            INSERT INTO trips (date, start_loc, end_loc, mode, car_name, miles, co2_kg, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (sheet_row, date, start_loc, end_loc, mode, cars_raw, miles, notes),
+            (date, start_loc, end_loc, mode, car_name, miles, co2_kg, notes),
         )
-        trip_id = cur.lastrowid
-        for car in cars:
-            conn.execute(
-                """
-                INSERT INTO trip_cars (trip_id, car_name, occupants, miles, co2_kg)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (trip_id, car["car_name"], car["occupants"], miles, car["co2_kg"]),
-            )
 
 
 def get_summary() -> dict:
@@ -82,7 +56,7 @@ def get_summary() -> dict:
         total_miles = total_row["total_miles"]
 
         total_co2_row = conn.execute(
-            "SELECT COALESCE(SUM(co2_kg), 0) AS total_co2_kg FROM trip_cars"
+            "SELECT COALESCE(SUM(co2_kg), 0) AS total_co2_kg FROM trips"
         ).fetchone()
         total_co2_kg = total_co2_row["total_co2_kg"]
 
@@ -103,7 +77,8 @@ def get_summary() -> dict:
             SELECT car_name,
                    SUM(miles)  AS miles,
                    SUM(co2_kg) AS co2_kg
-            FROM trip_cars
+            FROM trips
+            WHERE car_name IS NOT NULL AND car_name != ''
             GROUP BY car_name
             ORDER BY miles DESC
         """).fetchall()

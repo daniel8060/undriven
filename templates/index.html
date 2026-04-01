@@ -18,6 +18,7 @@
       --accent:    #2d6a4f;
       --accent-lt: #d8f3e3;
       --danger:    #c0392b;
+      --danger-lt: #fdecea;
       --mono:      'JetBrains Mono', monospace;
       --sans:      'Inter', sans-serif;
       --radius:    10px;
@@ -63,28 +64,107 @@
       margin-top: .15rem;
     }
 
-    .sync-badge {
-      font-family: var(--mono);
-      font-size: .75rem;
-      padding: .3rem .7rem;
-      border-radius: 20px;
-      white-space: nowrap;
+    /* ── Flash banner ── */
+    .flash {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .65rem 1rem;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      margin-bottom: 1.5rem;
     }
 
-    .sync-badge.new {
+    .flash.success {
       background: var(--accent-lt);
       color: var(--accent);
+      border: 1px solid #b2dfc8;
     }
 
-    .sync-badge.uptodate {
-      background: var(--border);
-      color: var(--muted);
-    }
-
-    .sync-badge.error {
-      background: #fdecea;
+    .flash.error {
+      background: var(--danger-lt);
       color: var(--danger);
+      border: 1px solid #f5c6c2;
     }
+
+    /* ── Log trip form ── */
+    .log-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+
+    .log-card .card-title {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr 1fr 130px 160px 1fr auto;
+      gap: .6rem;
+      align-items: end;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+
+    .form-field label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      font-family: var(--sans);
+      font-size: .88rem;
+      padding: .45rem .65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+      width: 100%;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-log {
+      font-family: var(--sans);
+      font-size: .85rem;
+      font-weight: 500;
+      padding: .48rem 1.1rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .15s;
+      align-self: end;
+    }
+
+    .btn-log:hover { opacity: .85; }
+    .btn-log:active { opacity: .7; }
 
     /* ── Hero stats ── */
     .hero-row {
@@ -188,9 +268,7 @@
     }
 
     /* ── Table ── */
-    .table-wrap {
-      overflow-x: auto;
-    }
+    .table-wrap { overflow-x: auto; }
 
     table {
       width: 100%;
@@ -224,18 +302,113 @@
       padding: 1.5rem .75rem;
     }
 
+    /* ── Locate button ── */
+    .btn-locate {
+      position: absolute;
+      right: .45rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1;
+      padding: .1rem;
+      transition: color .15s;
+    }
+    .btn-locate:hover { color: var(--accent); }
+    .btn-locate.loading { animation: spin .7s linear infinite; display: inline-block; }
+
+    /* ── Autocomplete dropdown ── */
+    .ac-wrap { position: relative; }
+
+    .ac-dropdown {
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      z-index: 50;
+      overflow: hidden;
+    }
+
+    .ac-dropdown:empty { display: none; }
+
+    .ac-item {
+      padding: .5rem .75rem;
+      font-size: .84rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.active { background: var(--accent-lt); color: var(--accent); }
+
+    /* ── Spinner overlay ── */
+    .spinner-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(249,249,248,.75);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .9rem;
+    }
+
+    .spinner-overlay.active { display: flex; }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    .spinner-label {
+      font-size: .85rem;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .form-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
     @media (max-width: 720px) {
       .hero-row { grid-template-columns: repeat(2, 1fr); }
       .charts-row { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 420px) {
       .hero-row { grid-template-columns: 1fr 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+<!-- Spinner overlay -->
+<div class="spinner-overlay" id="spinnerOverlay">
+  <div class="spinner"></div>
+  <div class="spinner-label">resolving route…</div>
+</div>
+
 <div class="page">
 
   <!-- Header -->
@@ -244,16 +417,77 @@
       <h1>Undriven</h1>
       <p>car miles replaced by human-powered &amp; transit trips</p>
     </div>
-
-    {% if sync.errors > 0 and sync.processed == 0 %}
-      <span class="sync-badge error">⚠ {{ sync.errors }} error{{ 's' if sync.errors != 1 }}</span>
-    {% elif sync.processed > 0 %}
-      <span class="sync-badge new">+{{ sync.processed }} new trip{{ 's' if sync.processed != 1 }} synced
-        {%- if sync.errors %} &middot; {{ sync.errors }} error{{ 's' if sync.errors != 1 }}{% endif %}</span>
-    {% else %}
-      <span class="sync-badge uptodate">up to date</span>
-    {% endif %}
   </header>
+
+  <!-- Flash messages -->
+  {% if logged %}
+    <div class="flash success">
+      Trip logged — <strong>{{ logged }} mi</strong> replaced.
+    </div>
+  {% elif error %}
+    <div class="flash error">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <!-- Log a trip -->
+  <div class="log-card">
+    <div class="card-title">Log a Trip</div>
+    <form method="POST" action="/log">
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="f-date">Date</label>
+          <input type="date" id="f-date" name="date" required
+                 value="{{ today }}">
+        </div>
+
+        <div class="form-field">
+          <label for="f-start">From</label>
+          <div class="ac-wrap">
+            <input type="text" id="f-start" name="start" placeholder="123 Main St, City" required autocomplete="off" style="padding-right:2rem">
+            <button type="button" class="btn-locate" id="btn-locate" title="Use my location">&#x2315;</button>
+            <div class="ac-dropdown" id="ac-start"></div>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="f-end">To</label>
+          <div class="ac-wrap">
+            <input type="text" id="f-end" name="end" placeholder="456 Oak Ave, City" required autocomplete="off">
+            <div class="ac-dropdown" id="ac-end"></div>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="f-mode">Mode</label>
+          <select id="f-mode" name="mode" required>
+            {% for m in modes %}
+              <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="f-car">Car replaced</label>
+          <select id="f-car" name="car">
+            <option value="">— none —</option>
+            {% for name in config_cars %}
+              <option value="{{ name }}">{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="f-notes">Notes</label>
+          <input type="text" id="f-notes" name="notes" placeholder="optional">
+        </div>
+
+        <button type="submit" class="btn-log">Log trip</button>
+
+      </div>
+    </form>
+  </div>
 
   <!-- Hero stats -->
   <div class="hero-row">
@@ -278,7 +512,6 @@
   <!-- Charts row -->
   <div class="charts-row">
 
-    <!-- Weekly bar chart -->
     <div class="card">
       <div class="card-title">Miles Replaced — Last 12 Weeks</div>
       <div class="chart-wrap">
@@ -286,7 +519,6 @@
       </div>
     </div>
 
-    <!-- By-mode breakdown -->
     <div class="card">
       <div class="card-title">By Mode</div>
       {% if summary.by_mode %}
@@ -332,7 +564,7 @@
               <td class="mono">{{ "%.1f"|format(car.co2_kg) }}</td>
               <td class="mono">{{ "%.1f"|format(car.co2_kg * 2.20462) }}</td>
               <td class="mono">
-                {% if config_cars[car.car_name] is defined %}
+                {% if car.car_name in config_cars %}
                   {{ "%.1f"|format(car.miles / config_cars[car.car_name].mpg) }}
                 {% else %}
                   —
@@ -341,7 +573,7 @@
             </tr>
             {% endfor %}
           {% else %}
-            <tr><td colspan="5" class="empty-row">No vehicle data yet. Add trips to your sheet to get started.</td></tr>
+            <tr><td colspan="5" class="empty-row">No vehicle data yet. Log a trip above to get started.</td></tr>
           {% endif %}
         </tbody>
       </table>
@@ -351,6 +583,103 @@
 </div><!-- /.page -->
 
 <script>
+  // ── Geolocation ──
+  document.getElementById('btn-locate').addEventListener('click', () => {
+    if (!navigator.geolocation) { alert('Geolocation not supported by your browser.'); return; }
+    const btn = document.getElementById('btn-locate');
+    btn.classList.add('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        fetch(`/api/reverse-geocode?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.label) document.getElementById('f-start').value = data.label;
+            else alert('Could not resolve your location to an address.');
+          })
+          .catch(() => alert('Location lookup failed.'))
+          .finally(() => btn.classList.remove('loading'));
+      },
+      () => {
+        btn.classList.remove('loading');
+        alert('Location access denied or unavailable.');
+      }
+    );
+  });
+
+  // ── Autocomplete ──
+  function setupAutocomplete(inputId, dropdownId) {
+    const input    = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+    let debounce   = null;
+    let activeIdx  = -1;
+
+    function showSuggestions(items) {
+      dropdown.innerHTML = '';
+      activeIdx = -1;
+      items.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'ac-item';
+        el.textContent = item.label;
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault(); // prevent blur firing before click
+          input.value = item.label;
+          dropdown.innerHTML = '';
+        });
+        dropdown.appendChild(el);
+      });
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      const q = input.value.trim();
+      if (q.length < 2) { dropdown.innerHTML = ''; return; }
+      debounce = setTimeout(() => {
+        fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`)
+          .then(r => r.json())
+          .then(showSuggestions)
+          .catch(() => {});
+      }, 250);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      const items = dropdown.querySelectorAll('.ac-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIdx = Math.min(activeIdx + 1, items.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIdx = Math.max(activeIdx - 1, -1);
+      } else if (e.key === 'Enter' && activeIdx >= 0) {
+        e.preventDefault();
+        input.value = items[activeIdx].textContent;
+        dropdown.innerHTML = '';
+        return;
+      } else if (e.key === 'Escape') {
+        dropdown.innerHTML = '';
+        return;
+      }
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+      if (activeIdx >= 0) items[activeIdx].scrollIntoView({ block: 'nearest' });
+    });
+
+    input.addEventListener('blur', () => {
+      // Small delay so mousedown on a suggestion fires first
+      setTimeout(() => { dropdown.innerHTML = ''; }, 150);
+    });
+  }
+
+  setupAutocomplete('f-start', 'ac-start');
+  setupAutocomplete('f-end',   'ac-end');
+
+  // Show spinner on form submit
+  document.querySelector('form[action="/log"]').addEventListener('submit', function () {
+    document.getElementById('spinnerOverlay').classList.add('active');
+  });
+
+  // Pre-fill today's date
+  document.getElementById('f-date').valueAsDate = new Date();
+
   const weeklyData = {{ summary.over_time | tojson }};
 
   const ctx = document.getElementById('weeklyChart').getContext('2d');

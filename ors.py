@@ -1,3 +1,4 @@
+import concurrent.futures
 import requests
 import config
 
@@ -13,10 +14,17 @@ def _headers():
 
 
 def geocode(place: str) -> tuple[float, float]:
+    params = {"api_key": config.ORS_API_KEY, "text": place, "size": 1}
+
+    focus = getattr(config, "GEOCODE_FOCUS", None)
+    if focus:
+        params["focus.point.lon"] = focus["lon"]
+        params["focus.point.lat"] = focus["lat"]
+
     resp = requests.get(
         f"{BASE_URL}/geocode/search",
         headers=_headers(),
-        params={"api_key": config.ORS_API_KEY, "text": place, "size": 1},
+        params=params,
         timeout=10,
     )
     resp.raise_for_status()
@@ -27,9 +35,55 @@ def geocode(place: str) -> tuple[float, float]:
     return (coords[0], coords[1])
 
 
+def reverse_geocode(lon: float, lat: float) -> str:
+    """Return a human-readable address label for a coordinate pair."""
+    resp = requests.get(
+        f"{BASE_URL}/geocode/reverse",
+        headers=_headers(),
+        params={"api_key": config.ORS_API_KEY, "point.lon": lon, "point.lat": lat, "size": 1},
+        timeout=5,
+    )
+    resp.raise_for_status()
+    features = resp.json().get("features", [])
+    if not features:
+        raise ORSError(f"No reverse geocoding results for ({lon}, {lat})")
+    return features[0]["properties"].get("label", "")
+
+
+def autocomplete(text: str) -> list[dict]:
+    """Return up to 5 place suggestions for partial input."""
+    params = {"api_key": config.ORS_API_KEY, "text": text, "size": 5}
+
+    focus = getattr(config, "GEOCODE_FOCUS", None)
+    if focus:
+        params["focus.point.lon"] = focus["lon"]
+        params["focus.point.lat"] = focus["lat"]
+
+    resp = requests.get(
+        f"{BASE_URL}/geocode/autocomplete",
+        headers=_headers(),
+        params=params,
+        timeout=5,
+    )
+    resp.raise_for_status()
+    features = resp.json().get("features", [])
+    return [
+        {
+            "label": f["properties"].get("label", ""),
+            "lon": f["geometry"]["coordinates"][0],
+            "lat": f["geometry"]["coordinates"][1],
+        }
+        for f in features
+    ]
+
+
 def driving_miles(start: str, end: str) -> float:
-    start_coord = geocode(start)
-    end_coord = geocode(end)
+    # Geocode both endpoints in parallel to halve round-trip time
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        fut_start = pool.submit(geocode, start)
+        fut_end   = pool.submit(geocode, end)
+        start_coord = fut_start.result()
+        end_coord   = fut_end.result()
 
     resp = requests.post(
         f"{BASE_URL}/v2/directions/driving-car",
