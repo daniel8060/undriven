@@ -84,24 +84,39 @@ def get_summary() -> dict:
         """).fetchall()
         by_car = [dict(r) for r in by_car_rows]
 
-        # Last 12 weeks, week starting Monday
-        today = datetime.utcnow().date()
-        week_start = today - timedelta(days=today.weekday())  # this Monday
+        # Last 12 weeks, week starting Monday (use local date to match stored trip dates)
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
         weeks = []
         for i in range(11, -1, -1):
             wstart = week_start - timedelta(weeks=i)
             wend = wstart + timedelta(days=6)
             label = wstart.strftime("%b %d")
-            row = conn.execute(
+
+            trip_count = conn.execute(
+                "SELECT COUNT(*) AS cnt FROM trips WHERE date >= ? AND date <= ?",
+                (wstart.isoformat(), wend.isoformat()),
+            ).fetchone()["cnt"]
+
+            mode_rows = conn.execute(
                 """
-                SELECT COALESCE(SUM(miles), 0) AS miles,
-                       COUNT(*) AS trips
+                SELECT mode, COALESCE(SUM(miles), 0) AS miles
                 FROM trips
                 WHERE date >= ? AND date <= ?
+                GROUP BY mode
                 """,
                 (wstart.isoformat(), wend.isoformat()),
-            ).fetchone()
-            weeks.append({"week": label, "miles": row["miles"], "trips": row["trips"]})
+            ).fetchall()
+
+            by_mode_week = {r["mode"]: round(r["miles"], 2) for r in mode_rows}
+            total = round(sum(by_mode_week.values()), 2)
+
+            weeks.append({
+                "week": label,
+                "miles": total,
+                "trips": trip_count,
+                "by_mode": by_mode_week,
+            })
 
     top_mode = by_mode[0]["mode"] if by_mode else "—"
 
