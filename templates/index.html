@@ -106,12 +106,66 @@
       margin-bottom: 1rem;
     }
 
-    .form-grid {
+    /* Route row — From / To get all the space */
+    .route-row {
       display: grid;
-      grid-template-columns: 140px 1fr 1fr 130px 160px 1fr auto;
+      grid-template-columns: 1fr auto 1fr;
+      gap: .6rem;
+      align-items: end;
+      margin-bottom: .75rem;
+    }
+
+    .route-divider {
+      display: flex;
+      align-items: flex-end;
+      padding-bottom: .05rem;
+    }
+
+    .btn-swap {
+      font-size: 1rem;
+      padding: .42rem .55rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: color .15s, border-color .15s;
+      line-height: 1;
+    }
+    .btn-swap:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* Meta row — date, mode, car, notes, toggle, submit */
+    .meta-row {
+      display: grid;
+      grid-template-columns: 140px 120px 150px 1fr auto auto;
       gap: .6rem;
       align-items: end;
     }
+
+    /* Trip type toggle */
+    .trip-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      align-self: end;
+    }
+
+    .tt-btn {
+      font-family: var(--sans);
+      font-size: .8rem;
+      font-weight: 500;
+      padding: .46rem .75rem;
+      background: var(--bg);
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      white-space: nowrap;
+      transition: background .15s, color .15s;
+    }
+
+    .tt-btn + .tt-btn { border-left: 1px solid var(--border); }
+    .tt-btn.active { background: var(--accent); color: #fff; }
 
     .form-field {
       display: flex;
@@ -302,23 +356,24 @@
       padding: 1.5rem .75rem;
     }
 
-    /* ── Locate button ── */
+    /* ── Locate button (form header) ── */
     .btn-locate {
-      position: absolute;
-      right: .45rem;
-      top: 50%;
-      transform: translateY(-50%);
       background: none;
-      border: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
       cursor: pointer;
       color: var(--muted);
-      font-size: 1rem;
-      line-height: 1;
-      padding: .1rem;
-      transition: color .15s;
+      font-size: .75rem;
+      padding: .2rem .55rem;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
     }
-    .btn-locate:hover { color: var(--accent); }
-    .btn-locate.loading { animation: spin .7s linear infinite; display: inline-block; }
+    .btn-locate:hover { color: var(--accent); border-color: var(--accent); }
+    .btn-locate.active { color: var(--accent); border-color: var(--accent); background: var(--accent-lt); }
+    .btn-locate.loading { opacity: .6; pointer-events: none; }
 
     /* ── Autocomplete dropdown ── */
     .ac-wrap { position: relative; }
@@ -384,21 +439,28 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Responsive ── */
-    @media (max-width: 900px) {
-      .form-grid {
+    @media (max-width: 860px) {
+      .meta-row {
         grid-template-columns: 1fr 1fr 1fr;
       }
+      .meta-row .btn-log { grid-column: span 1; }
     }
 
     @media (max-width: 720px) {
-      .hero-row { grid-template-columns: repeat(2, 1fr); }
-      .charts-row { grid-template-columns: 1fr; }
-      .form-grid { grid-template-columns: 1fr 1fr; }
+      .hero-row    { grid-template-columns: repeat(2, 1fr); }
+      .charts-row  { grid-template-columns: 1fr; }
+      .meta-row    { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 540px) {
+      .route-row   { grid-template-columns: 1fr; }
+      .route-divider { display: none; }
+      .meta-row    { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 420px) {
-      .hero-row { grid-template-columns: 1fr 1fr; }
-      .form-grid { grid-template-columns: 1fr; }
+      .hero-row  { grid-template-columns: 1fr 1fr; }
+      .meta-row  { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -422,7 +484,12 @@
   <!-- Flash messages -->
   {% if logged %}
     <div class="flash success">
-      Trip logged — <strong>{{ logged }} mi</strong> replaced.
+      {% if round_trip == "1" %}
+        Round trip logged — <strong>{{ logged }} mi</strong> each way
+        (<strong>{{ "%.1f"|format(logged|float * 2) }} mi</strong> total).
+      {% else %}
+        Trip logged — <strong>{{ logged }} mi</strong> replaced.
+      {% endif %}
     </div>
   {% elif error %}
     <div class="flash error">
@@ -432,23 +499,27 @@
 
   <!-- Log a trip -->
   <div class="log-card">
-    <div class="card-title">Log a Trip</div>
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      Log a Trip
+      <button type="button" class="btn-locate" id="btn-locate">
+        <span>&#x2315;</span><span id="locate-label">Use my location</span>
+      </button>
+    </div>
     <form method="POST" action="/log">
-      <div class="form-grid">
+      <input type="hidden" id="f-round-trip" name="round_trip" value="1">
 
-        <div class="form-field">
-          <label for="f-date">Date</label>
-          <input type="date" id="f-date" name="date" required
-                 value="{{ today }}">
-        </div>
-
+      <!-- Row 1: From / To -->
+      <div class="route-row">
         <div class="form-field">
           <label for="f-start">From</label>
           <div class="ac-wrap">
-            <input type="text" id="f-start" name="start" placeholder="123 Main St, City" required autocomplete="off" style="padding-right:2rem">
-            <button type="button" class="btn-locate" id="btn-locate" title="Use my location">&#x2315;</button>
+            <input type="text" id="f-start" name="start" placeholder="123 Main St, City" required autocomplete="off">
             <div class="ac-dropdown" id="ac-start"></div>
           </div>
+        </div>
+
+        <div class="route-divider">
+          <button type="button" class="btn-swap" id="btn-swap" title="Swap From / To">&#x21C4;</button>
         </div>
 
         <div class="form-field">
@@ -457,6 +528,14 @@
             <input type="text" id="f-end" name="end" placeholder="456 Oak Ave, City" required autocomplete="off">
             <div class="ac-dropdown" id="ac-end"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Row 2: meta fields -->
+      <div class="meta-row">
+        <div class="form-field">
+          <label for="f-date">Date</label>
+          <input type="date" id="f-date" name="date" required>
         </div>
 
         <div class="form-field">
@@ -483,8 +562,12 @@
           <input type="text" id="f-notes" name="notes" placeholder="optional">
         </div>
 
-        <button type="submit" class="btn-log">Log trip</button>
+        <div class="trip-toggle">
+          <button type="button" class="tt-btn active" id="btn-roundtrip">Round trip</button>
+          <button type="button" class="tt-btn" id="btn-oneway">One way</button>
+        </div>
 
+        <button type="submit" class="btn-log">Log</button>
       </div>
     </form>
   </div>
@@ -583,27 +666,59 @@
 </div><!-- /.page -->
 
 <script>
-  // ── Geolocation ──
+  // ── Date: use local timezone, not UTC ──
+  (function () {
+    const now = new Date();
+    const y   = now.getFullYear();
+    const m   = String(now.getMonth() + 1).padStart(2, '0');
+    const d   = String(now.getDate()).padStart(2, '0');
+    document.getElementById('f-date').value = `${y}-${m}-${d}`;
+  })();
+
+  // ── Geolocation — calibrates autocomplete to user's area ──
+  let userFocus = null; // { lon, lat } once granted
+
   document.getElementById('btn-locate').addEventListener('click', () => {
     if (!navigator.geolocation) { alert('Geolocation not supported by your browser.'); return; }
-    const btn = document.getElementById('btn-locate');
+    const btn   = document.getElementById('btn-locate');
+    const label = document.getElementById('locate-label');
     btn.classList.add('loading');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        fetch(`/api/reverse-geocode?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`)
-          .then(r => r.json())
-          .then(data => {
-            if (data.label) document.getElementById('f-start').value = data.label;
-            else alert('Could not resolve your location to an address.');
-          })
-          .catch(() => alert('Location lookup failed.'))
-          .finally(() => btn.classList.remove('loading'));
+        userFocus = { lon: pos.coords.longitude, lat: pos.coords.latitude };
+        btn.classList.remove('loading');
+        btn.classList.add('active');
+        label.textContent = 'Location active';
       },
       () => {
         btn.classList.remove('loading');
         alert('Location access denied or unavailable.');
       }
     );
+  });
+
+  // ── Swap From / To ──
+  document.getElementById('btn-swap').addEventListener('click', () => {
+    const a = document.getElementById('f-start');
+    const b = document.getElementById('f-end');
+    [a.value, b.value] = [b.value, a.value];
+  });
+
+  // ── Round trip toggle ──
+  const hiddenRT    = document.getElementById('f-round-trip');
+  const btnOneway   = document.getElementById('btn-oneway');
+  const btnRoundtrip = document.getElementById('btn-roundtrip');
+
+  btnOneway.addEventListener('click', () => {
+    hiddenRT.value = '0';
+    btnOneway.classList.add('active');
+    btnRoundtrip.classList.remove('active');
+  });
+
+  btnRoundtrip.addEventListener('click', () => {
+    hiddenRT.value = '1';
+    btnRoundtrip.classList.add('active');
+    btnOneway.classList.remove('active');
   });
 
   // ── Autocomplete ──
@@ -616,12 +731,12 @@
     function showSuggestions(items) {
       dropdown.innerHTML = '';
       activeIdx = -1;
-      items.forEach((item, i) => {
+      items.forEach((item) => {
         const el = document.createElement('div');
         el.className = 'ac-item';
         el.textContent = item.label;
         el.addEventListener('mousedown', (e) => {
-          e.preventDefault(); // prevent blur firing before click
+          e.preventDefault();
           input.value = item.label;
           dropdown.innerHTML = '';
         });
@@ -634,10 +749,9 @@
       const q = input.value.trim();
       if (q.length < 2) { dropdown.innerHTML = ''; return; }
       debounce = setTimeout(() => {
-        fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`)
-          .then(r => r.json())
-          .then(showSuggestions)
-          .catch(() => {});
+        let url = `/api/autocomplete?q=${encodeURIComponent(q)}`;
+        if (userFocus) url += `&lon=${userFocus.lon}&lat=${userFocus.lat}`;
+        fetch(url).then(r => r.json()).then(showSuggestions).catch(() => {});
       }, 250);
     });
 
@@ -664,7 +778,6 @@
     });
 
     input.addEventListener('blur', () => {
-      // Small delay so mousedown on a suggestion fires first
       setTimeout(() => { dropdown.innerHTML = ''; }, 150);
     });
   }
@@ -672,13 +785,10 @@
   setupAutocomplete('f-start', 'ac-start');
   setupAutocomplete('f-end',   'ac-end');
 
-  // Show spinner on form submit
+  // ── Spinner on submit ──
   document.querySelector('form[action="/log"]').addEventListener('submit', function () {
     document.getElementById('spinnerOverlay').classList.add('active');
   });
-
-  // Pre-fill today's date
-  document.getElementById('f-date').valueAsDate = new Date();
 
   const weeklyData = {{ summary.over_time | tojson }};
 
