@@ -50,14 +50,17 @@ def reverse_geocode(lon: float, lat: float) -> str:
     return features[0]["properties"].get("label", "")
 
 
-def autocomplete(text: str) -> list[dict]:
-    """Return up to 5 place suggestions for partial input."""
+def autocomplete(text: str, focus: dict | None = None) -> list[dict]:
+    """Return up to 5 place suggestions for partial input.
+
+    focus — optional {"lon": float, "lat": float} that overrides GEOCODE_FOCUS in config.
+    """
     params = {"api_key": config.ORS_API_KEY, "text": text, "size": 5}
 
-    focus = getattr(config, "GEOCODE_FOCUS", None)
-    if focus:
-        params["focus.point.lon"] = focus["lon"]
-        params["focus.point.lat"] = focus["lat"]
+    resolved_focus = focus or getattr(config, "GEOCODE_FOCUS", None)
+    if resolved_focus:
+        params["focus.point.lon"] = resolved_focus["lon"]
+        params["focus.point.lat"] = resolved_focus["lat"]
 
     resp = requests.get(
         f"{BASE_URL}/geocode/autocomplete",

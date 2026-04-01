@@ -14,8 +14,9 @@ MODES = ["bike", "walk", "train", "bus", "scooter", "other"]
 @app.route("/")
 def index():
     summary = get_summary()
-    logged = request.args.get("logged")
-    error = request.args.get("error")
+    logged      = request.args.get("logged")
+    error       = request.args.get("error")
+    round_trip  = request.args.get("round_trip")
     return render_template(
         "index.html",
         summary=summary,
@@ -23,19 +24,20 @@ def index():
         modes=MODES,
         logged=logged,
         error=error,
+        round_trip=round_trip,
     )
 
 
 @app.route("/log", methods=["POST"])
 def log():
-    date     = request.form.get("date", "").strip()
-    start    = request.form.get("start", "").strip()
-    end      = request.form.get("end", "").strip()
-    mode     = request.form.get("mode", "").strip()
-    car_raw  = request.form.get("car", "").strip()
-    notes    = request.form.get("notes", "").strip()
+    date        = request.form.get("date", "").strip()
+    start       = request.form.get("start", "").strip()
+    end         = request.form.get("end", "").strip()
+    mode        = request.form.get("mode", "").strip()
+    car_raw     = request.form.get("car", "").strip()
+    notes       = request.form.get("notes", "").strip()
+    round_trip  = request.form.get("round_trip", "0") == "1"
 
-    # Basic validation
     if not (date and start and end and mode):
         return redirect(url_for("index", error="Date, start, end, and mode are required."))
 
@@ -48,10 +50,12 @@ def log():
 
     try:
         miles = log_trip(date=date, start=start, end=end, mode=mode, car_name=car_name, notes=notes)
+        if round_trip:
+            log_trip(date=date, start=end, end=start, mode=mode, car_name=car_name, notes=notes)
     except ORSError as exc:
         return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 
-    return redirect(url_for("index", logged=f"{miles:.1f}"))
+    return redirect(url_for("index", logged=f"{miles:.1f}", round_trip="1" if round_trip else "0"))
 
 
 @app.route("/api/autocomplete")
@@ -60,7 +64,10 @@ def api_autocomplete():
     if len(q) < 2:
         return jsonify([])
     try:
-        return jsonify(autocomplete(q))
+        lon = request.args.get("lon", type=float)
+        lat = request.args.get("lat", type=float)
+        focus = {"lon": lon, "lat": lat} if lon is not None and lat is not None else None
+        return jsonify(autocomplete(q, focus=focus))
     except Exception:
         return jsonify([])
 
