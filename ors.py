@@ -66,9 +66,9 @@ def autocomplete(text: str, focus: dict | None = None) -> list[dict]:
         "boundary.country": getattr(config, "AUTOCOMPLETE_BOUNDARY_COUNTRIES", "USA,CAN"),
     }
 
-    # Use explicit focus if provided, then config focus, then continental US center as fallback.
+    # Use explicit focus if provided, then config focus, then where i'm currently sitting as a fallback.
     # A focus point boosts nearby results to the top without hard-filtering by distance.
-    resolved_focus = focus or getattr(config, "GEOCODE_FOCUS", None) or {"lon": -98.6, "lat": 39.8}
+    resolved_focus = focus or getattr(config, "GEOCODE_FOCUS", None) or {"lon": -122.6, "lat": 37.3}
     params["focus.point.lon"] = resolved_focus["lon"]
     params["focus.point.lat"] = resolved_focus["lat"]
 
