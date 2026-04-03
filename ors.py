@@ -54,13 +54,23 @@ def autocomplete(text: str, focus: dict | None = None) -> list[dict]:
     """Return up to 5 place suggestions for partial input.
 
     focus — optional {"lon": float, "lat": float} that overrides GEOCODE_FOCUS in config.
+    Restricts results to addresses, venues, and streets within North America by default.
     """
-    params = {"api_key": config.ORS_API_KEY, "text": text, "size": 5}
+    params = {
+        "api_key": config.ORS_API_KEY,
+        "text": text,
+        "size": 5,
+        # Only return actionable trip endpoints — no states, countries, counties, etc.
+        "layers": getattr(config, "AUTOCOMPLETE_LAYERS", "address,venue,street"),
+        # Hard-restrict to North America; overridable via config
+        "boundary.country": getattr(config, "AUTOCOMPLETE_BOUNDARY_COUNTRIES", "USA,CAN"),
+    }
 
-    resolved_focus = focus or getattr(config, "GEOCODE_FOCUS", None)
-    if resolved_focus:
-        params["focus.point.lon"] = resolved_focus["lon"]
-        params["focus.point.lat"] = resolved_focus["lat"]
+    # Use explicit focus if provided, then config focus, then continental US center as fallback.
+    # A focus point boosts nearby results to the top without hard-filtering by distance.
+    resolved_focus = focus or getattr(config, "GEOCODE_FOCUS", None) or {"lon": -98.6, "lat": 39.8}
+    params["focus.point.lon"] = resolved_focus["lon"]
+    params["focus.point.lat"] = resolved_focus["lat"]
 
     resp = requests.get(
         f"{BASE_URL}/geocode/autocomplete",

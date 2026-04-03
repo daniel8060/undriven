@@ -53,15 +53,46 @@ def test_autocomplete_returns_formatted_list():
     assert results[0]["lat"] == pytest.approx(37.77)
 
 
-def test_autocomplete_passes_focus():
+def _empty_ac_mock():
     mock = MagicMock()
     mock.raise_for_status = MagicMock()
     mock.json.return_value = {"features": []}
-    with patch("ors.requests.get", return_value=mock) as mock_get:
+    return mock
+
+
+def test_autocomplete_passes_explicit_focus():
+    with patch("ors.requests.get", return_value=_empty_ac_mock()) as mock_get:
         ors.autocomplete("park", focus={"lon": -122.41, "lat": 37.77})
     call_params = mock_get.call_args[1]["params"]
     assert call_params["focus.point.lon"] == -122.41
     assert call_params["focus.point.lat"] == 37.77
+
+
+def test_autocomplete_falls_back_to_continental_us():
+    """When no focus is provided, should default to continental US center."""
+    with patch("ors.requests.get", return_value=_empty_ac_mock()) as mock_get:
+        with patch.object(ors.config, "GEOCODE_FOCUS", None):
+            ors.autocomplete("Main St")
+    call_params = mock_get.call_args[1]["params"]
+    assert call_params["focus.point.lon"] == pytest.approx(-98.6)
+    assert call_params["focus.point.lat"] == pytest.approx(39.8)
+
+
+def test_autocomplete_sends_layers_filter():
+    with patch("ors.requests.get", return_value=_empty_ac_mock()) as mock_get:
+        ors.autocomplete("park")
+    call_params = mock_get.call_args[1]["params"]
+    assert "layers" in call_params
+    assert "address" in call_params["layers"]
+    assert "venue" in call_params["layers"]
+
+
+def test_autocomplete_restricts_to_north_america():
+    with patch("ors.requests.get", return_value=_empty_ac_mock()) as mock_get:
+        ors.autocomplete("park")
+    call_params = mock_get.call_args[1]["params"]
+    assert "boundary.country" in call_params
+    assert "USA" in call_params["boundary.country"]
 
 
 def test_driving_miles_converts_metres():

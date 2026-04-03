@@ -19,8 +19,14 @@ CARS = {
 
 # Bias geocoding results toward your area. Set to your approximate location.
 # Find your lon/lat at: https://www.latlong.net
-# Leave as None to use ORS defaults (may return distant results for ambiguous names).
+# Leave as None to fall back to the continental US center for autocomplete.
 GEOCODE_FOCUS = None  # e.g. {"lon": -122.41, "lat": 37.77}
+
+# Autocomplete quality filters — restrict layer types and geographic boundary.
+# layers: only return actionable trip endpoints (addresses, venues, streets).
+# boundary.country: ISO-3166 alpha-3 codes; comma-separated for multiple.
+AUTOCOMPLETE_LAYERS = os.environ.get("AUTOCOMPLETE_LAYERS", "address,venue,street")
+AUTOCOMPLETE_BOUNDARY_COUNTRIES = os.environ.get("AUTOCOMPLETE_BOUNDARY_COUNTRIES", "USA,CAN")
 
 CO2_KG_PER_GALLON = {
     "gasoline": 8.887,
