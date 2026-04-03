@@ -1,9 +1,16 @@
-ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI4MjY4MDI0MGUzNTQ5ZDM4OGM5MzQwZjE1MDVmYjdlIiwiaCI6Im11cm11cjY0In0="
+import os
+from dotenv import load_dotenv
 
-SHEET_ID = "your-google-sheet-id-here"
-SHEET_TAB = "Sheet1"
+load_dotenv()
 
-GOOGLE_CREDENTIALS_FILE = "credentials.json"
+ORS_API_KEY = os.environ.get(
+    "ORS_API_KEY",
+    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI4MjY4MDI0MGUzNTQ5ZDM4OGM5MzQwZjE1MDVmYjdlIiwiaCI6Im11cm11cjY0In0=",
+)
+
+SHEET_ID = os.environ.get("SHEET_ID", "your-google-sheet-id-here")
+SHEET_TAB = os.environ.get("SHEET_TAB", "Sheet1")
+GOOGLE_CREDENTIALS_FILE = os.environ.get("GOOGLE_CREDENTIALS_FILE", "credentials.json")
 
 CARS = {
     "4Runner": {"mpg": 18.0, "fuel_type": "gasoline"},
