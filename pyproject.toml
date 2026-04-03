@@ -5,6 +5,8 @@ description = "Track car miles replaced by non-car trips"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.0",
+    "flask-sqlalchemy>=3.1",
+    "flask-migrate>=4.0",
     "gspread>=6.0",
     "google-auth>=2.0",
     "requests>=2.31",
