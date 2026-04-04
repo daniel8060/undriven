@@ -5,6 +5,7 @@ function setupAutocomplete(inputId, dropdownId) {
   const dropdown = document.getElementById(dropdownId);
   let debounce   = null;
   let activeIdx  = -1;
+  let reqSeq     = 0; // incremented per request; stale responses are discarded
 
   function showSuggestions(items) {
     dropdown.innerHTML = '';
@@ -29,7 +30,11 @@ function setupAutocomplete(inputId, dropdownId) {
     debounce = setTimeout(() => {
       let url = `/api/autocomplete?q=${encodeURIComponent(q)}`;
       if (userFocus) url += `&lon=${userFocus.lon}&lat=${userFocus.lat}`;
-      fetch(url).then(r => r.json()).then(showSuggestions).catch(() => {});
+      const seq = ++reqSeq;
+      fetch(url)
+        .then(r => r.json())
+        .then(data => { if (seq === reqSeq) showSuggestions(data); })
+        .catch(() => {});
     }, 250);
   });
 

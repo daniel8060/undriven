@@ -19,6 +19,12 @@ CARS = {
 # Leave as None to use ORS defaults (may return distant results for ambiguous names).
 GEOCODE_FOCUS = {"lon": -122.41, "lat": 37.77}
 
+# Autocomplete quality filters — restrict layer types and geographic boundary.
+# layers: only return actionable trip endpoints (addresses, venues, streets).
+# boundary.country: ISO-3166 alpha-3 codes; comma-separated for multiple.
+AUTOCOMPLETE_LAYERS = os.environ.get("AUTOCOMPLETE_LAYERS", "address,venue,street")
+AUTOCOMPLETE_BOUNDARY_COUNTRIES = os.environ.get("AUTOCOMPLETE_BOUNDARY_COUNTRIES", "USA,CAN")
+
 CO2_KG_PER_GALLON = {
     "gasoline": 8.887,
     "diesel": 10.180,
