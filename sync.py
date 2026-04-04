@@ -45,7 +45,7 @@ def log_trip(
         start_loc=start,
         end_loc=end,
         mode=mode,
-        car_name=car_name or "",
+        car_name=car_name,
         miles=miles,
         co2_kg=co2,
         notes=notes,

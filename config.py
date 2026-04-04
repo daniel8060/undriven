@@ -3,12 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ORS_API_KEY = os.environ.get(
-    "ORS_API_KEY",
-    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI4MjY4MDI0MGUzNTQ5ZDM4OGM5MzQwZjE1MDVmYjdlIiwiaCI6Im11cm11cjY0In0=",
-)
+ORS_API_KEY = os.environ["ORS_API_KEY"]  # required — set in .env
 
-SHEET_ID = os.environ.get("SHEET_ID", "your-google-sheet-id-here")
+SHEET_ID = os.environ.get("SHEET_ID", "")
 SHEET_TAB = os.environ.get("SHEET_TAB", "Sheet1")
 GOOGLE_CREDENTIALS_FILE = os.environ.get("GOOGLE_CREDENTIALS_FILE", "credentials.json")
 
@@ -20,7 +17,7 @@ CARS = {
 # Bias geocoding results toward your area. Set to your approximate location.
 # Find your lon/lat at: https://www.latlong.net
 # Leave as None to use ORS defaults (may return distant results for ambiguous names).
-GEOCODE_FOCUS = None  # e.g. {"lon": -122.41, "lat": 37.77}
+GEOCODE_FOCUS = {"lon": -122.41, "lat": 37.77}
 
 CO2_KG_PER_GALLON = {
     "gasoline": 8.887,

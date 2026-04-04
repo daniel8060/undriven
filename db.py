@@ -1,31 +1,8 @@
-import sqlite3
 from datetime import datetime, timedelta
 
-DB_PATH = "trips.db"
+from sqlalchemy import func
 
-
-def _connect():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
-
-
-def init_db():
-    with _connect() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS trips (
-                id        INTEGER PRIMARY KEY,
-                date      TEXT,
-                start_loc TEXT,
-                end_loc   TEXT,
-                mode      TEXT,
-                car_name  TEXT,
-                miles     REAL,
-                co2_kg    REAL,
-                notes     TEXT
-            )
-        """)
+from models import Trip, db
 
 
 def insert_trip(
@@ -33,99 +10,108 @@ def insert_trip(
     start_loc: str,
     end_loc: str,
     mode: str,
-    car_name: str,
+    car_name: str | None,
     miles: float,
     co2_kg: float,
     notes: str,
-):
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO trips (date, start_loc, end_loc, mode, car_name, miles, co2_kg, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (date, start_loc, end_loc, mode, car_name, miles, co2_kg, notes),
-        )
+) -> Trip:
+    trip = Trip(
+        date=date,
+        start_loc=start_loc,
+        end_loc=end_loc,
+        mode=mode,
+        car_name=car_name or None,
+        miles=miles,
+        co2_kg=co2_kg,
+        notes=notes or "",
+    )
+    db.session.add(trip)
+    db.session.commit()
+    return trip
+
+
+def get_all_trips() -> list[Trip]:
+    return Trip.query.order_by(Trip.date.desc(), Trip.id.desc()).all()
+
+
+def get_trip(trip_id: int) -> Trip:
+    return db.get_or_404(Trip, trip_id)
+
+
+def delete_trip(trip_id: int) -> None:
+    trip = db.get_or_404(Trip, trip_id)
+    db.session.delete(trip)
+    db.session.commit()
 
 
 def get_summary() -> dict:
-    with _connect() as conn:
-        total_row = conn.execute(
-            "SELECT COALESCE(SUM(miles), 0) AS total_miles FROM trips"
-        ).fetchone()
-        total_miles = total_row["total_miles"]
+    total_miles  = db.session.query(func.coalesce(func.sum(Trip.miles),  0)).scalar()
+    total_co2_kg = db.session.query(func.coalesce(func.sum(Trip.co2_kg), 0)).scalar()
+    total_trips  = db.session.query(func.count(Trip.id)).scalar()
 
-        total_co2_row = conn.execute(
-            "SELECT COALESCE(SUM(co2_kg), 0) AS total_co2_kg FROM trips"
-        ).fetchone()
-        total_co2_kg = total_co2_row["total_co2_kg"]
+    by_mode_rows = (
+        db.session.query(
+            Trip.mode,
+            func.sum(Trip.miles).label("miles"),
+            func.count(Trip.id).label("trips"),
+        )
+        .group_by(Trip.mode)
+        .order_by(func.sum(Trip.miles).desc())
+        .all()
+    )
+    by_mode = [{"mode": r.mode, "miles": r.miles, "trips": r.trips} for r in by_mode_rows]
 
-        total_trips_row = conn.execute("SELECT COUNT(*) AS cnt FROM trips").fetchone()
-        total_trips = total_trips_row["cnt"]
+    by_car_rows = (
+        db.session.query(
+            Trip.car_name,
+            func.sum(Trip.miles).label("miles"),
+            func.sum(Trip.co2_kg).label("co2_kg"),
+        )
+        .filter(Trip.car_name.isnot(None), Trip.car_name != "")
+        .group_by(Trip.car_name)
+        .order_by(func.sum(Trip.miles).desc())
+        .all()
+    )
+    by_car = [{"car_name": r.car_name, "miles": r.miles, "co2_kg": r.co2_kg} for r in by_car_rows]
 
-        by_mode_rows = conn.execute("""
-            SELECT mode,
-                   SUM(miles) AS miles,
-                   COUNT(*)   AS trips
-            FROM trips
-            GROUP BY mode
-            ORDER BY miles DESC
-        """).fetchall()
-        by_mode = [dict(r) for r in by_mode_rows]
+    # Last 12 weeks — aggregated in Python to keep the SQL simple
+    today      = datetime.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    weeks      = []
 
-        by_car_rows = conn.execute("""
-            SELECT car_name,
-                   SUM(miles)  AS miles,
-                   SUM(co2_kg) AS co2_kg
-            FROM trips
-            WHERE car_name IS NOT NULL AND car_name != ''
-            GROUP BY car_name
-            ORDER BY miles DESC
-        """).fetchall()
-        by_car = [dict(r) for r in by_car_rows]
+    for i in range(11, -1, -1):
+        wstart = week_start - timedelta(weeks=i)
+        wend   = wstart + timedelta(days=6)
 
-        # Last 12 weeks, week starting Monday (use local date to match stored trip dates)
-        today = datetime.now().date()
-        week_start = today - timedelta(days=today.weekday())
-        weeks = []
-        for i in range(11, -1, -1):
-            wstart = week_start - timedelta(weeks=i)
-            wend = wstart + timedelta(days=6)
-            label = wstart.strftime("%b %d")
+        trip_count = Trip.query.filter(
+            Trip.date >= wstart.isoformat(),
+            Trip.date <= wend.isoformat(),
+        ).count()
 
-            trip_count = conn.execute(
-                "SELECT COUNT(*) AS cnt FROM trips WHERE date >= ? AND date <= ?",
-                (wstart.isoformat(), wend.isoformat()),
-            ).fetchone()["cnt"]
+        mode_rows = (
+            db.session.query(
+                Trip.mode,
+                func.coalesce(func.sum(Trip.miles), 0).label("miles"),
+            )
+            .filter(Trip.date >= wstart.isoformat(), Trip.date <= wend.isoformat())
+            .group_by(Trip.mode)
+            .all()
+        )
 
-            mode_rows = conn.execute(
-                """
-                SELECT mode, COALESCE(SUM(miles), 0) AS miles
-                FROM trips
-                WHERE date >= ? AND date <= ?
-                GROUP BY mode
-                """,
-                (wstart.isoformat(), wend.isoformat()),
-            ).fetchall()
-
-            by_mode_week = {r["mode"]: round(r["miles"], 2) for r in mode_rows}
-            total = round(sum(by_mode_week.values()), 2)
-
-            weeks.append({
-                "week": label,
-                "miles": total,
-                "trips": trip_count,
-                "by_mode": by_mode_week,
-            })
-
-    top_mode = by_mode[0]["mode"] if by_mode else "—"
+        by_mode_week = {r.mode: round(r.miles, 2) for r in mode_rows}
+        weeks.append({
+            "week":    wstart.strftime("%b %d"),
+            "miles":   round(sum(by_mode_week.values()), 2),
+            "trips":   trip_count,
+            "by_mode": by_mode_week,
+        })
 
     return {
-        "total_miles": total_miles,
+        "total_miles":  total_miles,
         "total_co2_kg": total_co2_kg,
-        "total_trips": total_trips,
-        "top_mode": top_mode,
-        "by_mode": by_mode,
-        "by_car": by_car,
-        "over_time": weeks,
+        "total_trips":  total_trips,
+        "top_mode":     by_mode[0]["mode"] if by_mode else "—",
+        "by_mode":      by_mode,
+        "by_car":       by_car,
+        "over_time":    weeks,
     }
