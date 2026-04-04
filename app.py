@@ -155,36 +155,29 @@ def _register_routes(app):
                 f"{BASE_URL}/v2/directions/driving-car",
                 headers={**_headers(), "Content-Type": "application/json"},
                 params={"api_key": config.ORS_API_KEY},
-                json={
-                    "coordinates": [list(start_coord), list(end_coord)],
-                    "geometry": True,
-                    "geometry_format": "geojson",
-                },
+                json={"coordinates": [list(start_coord), list(end_coord)]},
                 timeout=15,
             )
             data = resp.json()
             if resp.status_code != 200:
                 return jsonify({"error": data}), 502
-            summary  = data["routes"][0]["summary"]
-            coords   = data["routes"][0]["geometry"]["coordinates"]  # [[lon,lat],...]
-            miles    = summary["distance"] / 1609.344
-            # Sample ~10 evenly-spaced waypoints and build a Google Maps directions URL
-            # so you can see exactly what road ORS chose vs what Maps would pick.
-            sample = coords[::max(1, len(coords) // 10)]
-            waypoints = "|".join(f"{c[1]},{c[0]}" for c in sample[1:-1])
-            route_url = (
-                "https://www.google.com/maps/dir/?api=1"
-                f"&origin={start_coord[1]},{start_coord[0]}"
-                f"&destination={end_coord[1]},{end_coord[0]}"
-                + (f"&waypoints={waypoints}" if waypoints else "")
-            )
+            summary = data["routes"][0]["summary"]
+            steps   = data["routes"][0]["segments"][0]["steps"]
+            miles   = summary["distance"] / 1609.344
+            route_steps = [
+                {
+                    "instruction": s.get("instruction", ""),
+                    "name":        s.get("name", ""),
+                    "distance_mi": round(s["distance"] / 1609.344, 2),
+                }
+                for s in steps
+            ]
             return jsonify({
                 "start":        {"query": start, "lon": start_coord[0], "lat": start_coord[1]},
                 "end":          {"query": end,   "lon": end_coord[0],   "lat": end_coord[1]},
                 "miles":        round(miles, 2),
                 "duration_min": round(summary["duration"] / 60, 1),
-                "waypoints":    len(coords),
-                "route_url":    route_url,
+                "steps":        route_steps,
             })
         except Exception as e:
             return jsonify({"error": str(e)}), 502
