@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy import func
 
@@ -44,7 +44,11 @@ def delete_trip(trip_id: int) -> None:
     db.session.commit()
 
 
-def get_summary() -> dict:
+def get_summary(today=None) -> dict:
+    from datetime import date as _date
+    if today is None:
+        today = _date.today()
+
     total_miles  = db.session.query(func.coalesce(func.sum(Trip.miles),  0)).scalar()
     total_co2_kg = db.session.query(func.coalesce(func.sum(Trip.co2_kg), 0)).scalar()
     total_trips  = db.session.query(func.count(Trip.id)).scalar()
@@ -75,7 +79,6 @@ def get_summary() -> dict:
     by_car = [{"car_name": r.car_name, "miles": r.miles, "co2_kg": r.co2_kg} for r in by_car_rows]
 
     # Last 12 weeks — aggregated in Python to keep the SQL simple
-    today      = datetime.now().date()
     week_start = today - timedelta(days=today.weekday())
     weeks      = []
 
@@ -100,7 +103,7 @@ def get_summary() -> dict:
 
         by_mode_week = {r.mode: round(r.miles, 2) for r in mode_rows}
         weeks.append({
-            "week":    wstart.strftime("%b %d"),
+            "week":    wend.strftime("%b %d"),
             "miles":   round(sum(by_mode_week.values()), 2),
             "trips":   trip_count,
             "by_mode": by_mode_week,
