@@ -121,6 +121,24 @@ def _register_routes(app):
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
+    @app.route("/api/geocode")
+    def api_geocode():
+        """Diagnostic: show what coordinates ORS resolves for a given address string."""
+        q = request.args.get("q", "").strip()
+        if not q:
+            return jsonify({"error": "q param required"}), 400
+        try:
+            from ors import geocode
+            lon, lat = geocode(q)
+            return jsonify({
+                "query": q,
+                "lon": lon,
+                "lat": lat,
+                "maps_url": f"https://www.google.com/maps?q={lat},{lon}",
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 502
+
     @app.route("/api/summary")
     def api_summary():
         return jsonify(get_summary())

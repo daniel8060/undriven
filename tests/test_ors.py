@@ -68,14 +68,14 @@ def test_autocomplete_passes_explicit_focus():
     assert call_params["focus.point.lat"] == 37.77
 
 
-def test_autocomplete_falls_back_to_continental_us():
-    """When no focus is provided, should default to continental US center."""
+def test_autocomplete_falls_back_to_sunnyvale():
+    """When no focus is provided, should default to the Sunnyvale fallback coordinates."""
     with patch("ors.requests.get", return_value=_empty_ac_mock()) as mock_get:
         with patch.object(ors.config, "GEOCODE_FOCUS", None):
             ors.autocomplete("Main St")
     call_params = mock_get.call_args[1]["params"]
-    assert call_params["focus.point.lon"] == pytest.approx(-98.6)
-    assert call_params["focus.point.lat"] == pytest.approx(39.8)
+    assert call_params["focus.point.lon"] == pytest.approx(-122.04)
+    assert call_params["focus.point.lat"] == pytest.approx(37.37)
 
 
 def test_autocomplete_sends_layers_filter():

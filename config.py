@@ -17,7 +17,7 @@ CARS = {
 # Bias geocoding results toward your area. Set to your approximate location.
 # Find your lon/lat at: https://www.latlong.net
 # Leave as None to use ORS defaults (may return distant results for ambiguous names).
-GEOCODE_FOCUS = {"lon": -122.41, "lat": 37.77}
+GEOCODE_FOCUS = {"lon": -122.04, "lat": 37.37}  # Sunnyvale, CA
 
 # Autocomplete quality filters — restrict layer types and geographic boundary.
 # layers: only return actionable trip endpoints (addresses, venues, streets).
