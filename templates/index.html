@@ -48,14 +48,15 @@
 
   <!-- Log a trip -->
   <div class="log-card">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-      Log a Trip
-      <button type="button" class="btn-locate" id="btn-locate">
-        <span>&#x2315;</span><span id="locate-label">Use my location</span>
-      </button>
-    </div>
     <form method="POST" action="/log">
       <input type="hidden" id="f-round-trip" name="round_trip" value="1">
+
+      <!-- Locate button -->
+      <div class="form-header">
+        <button type="button" class="btn-locate" id="btn-locate">
+          <span>&#x2315;</span><span id="locate-label">Use my location</span>
+        </button>
+      </div>
 
       <!-- Row 1: From / To -->
       <div class="route-row">
@@ -79,6 +80,8 @@
           </div>
         </div>
       </div>
+
+      <div class="form-divider"></div>
 
       <!-- Row 2: meta fields -->
       <div class="meta-row">
@@ -110,12 +113,14 @@
           <label for="f-notes">Notes</label>
           <input type="text" id="f-notes" name="notes" placeholder="optional">
         </div>
+      </div>
 
+      <!-- Actions: trip toggle left, submit right -->
+      <div class="form-actions">
         <div class="trip-toggle">
           <button type="button" class="tt-btn active" id="btn-roundtrip">Round trip</button>
           <button type="button" class="tt-btn" id="btn-oneway">One way</button>
         </div>
-
         <button type="submit" class="btn-log">Log</button>
       </div>
     </form>
