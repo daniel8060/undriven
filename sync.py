@@ -1,6 +1,6 @@
 import config
 from db import insert_trip
-from ors import driving_miles, ORSError
+from gmaps import driving_miles, MapsError
 
 
 def parse_car(car_raw: str) -> str | None:
@@ -32,15 +32,12 @@ def log_trip(
     mode: str,
     car_name: str | None,
     notes: str,
-    start_coord: tuple | None = None,
-    end_coord:   tuple | None = None,
 ) -> float:
     """
-    Resolve driving miles via ORS, compute CO2, and persist the trip.
-    Returns the resolved miles. Raises ORSError if geocoding/routing fails.
-    Pre-computed coordinates can be passed to skip geocoding entirely.
+    Resolve driving miles via Google Distance Matrix, compute CO2, and persist the trip.
+    Returns the resolved miles. Raises MapsError if routing fails.
     """
-    miles = driving_miles(start, end, start_coord=start_coord, end_coord=end_coord)
+    miles = driving_miles(start, end)
     co2 = co2_for_car(car_name, miles) if car_name else 0.0
 
     insert_trip(

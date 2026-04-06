@@ -43,7 +43,7 @@ def create_app(test_config=None):
 
 def _register_routes(app):
     from db import delete_trip, get_all_trips, get_summary
-    from ors import ORSError, autocomplete
+    from gmaps import MapsError, autocomplete
     from sync import log_trip, parse_car
 
     @app.route("/")
@@ -82,35 +82,13 @@ def _register_routes(app):
         if car_raw and car_name is None:
             return redirect(url_for("index", error=f"Unknown car: {car_raw!r}. Check config.py."))
 
-        def _parse_coord(lon_str, lat_str):
-            try:
-                return (float(lon_str), float(lat_str))
-            except (TypeError, ValueError):
-                return None
-
-        start_coord = _parse_coord(
-            request.form.get("start_lon", ""), request.form.get("start_lat", ""))
-        end_coord   = _parse_coord(
-            request.form.get("end_lon",   ""), request.form.get("end_lat",   ""))
-
         try:
-            import time
-            print(f"[form] start_lon={request.form.get('start_lon')!r} start_lat={request.form.get('start_lat')!r} end_lon={request.form.get('end_lon')!r} end_lat={request.form.get('end_lat')!r}", flush=True)
-            _t0 = time.perf_counter()
-            coord_src = "autocomplete" if start_coord and end_coord else "geocode"
-            print(f"[perf] leg1 start ({coord_src}) sc={start_coord} ec={end_coord}", flush=True)
             miles = log_trip(date=date, start=start, end=end, mode=mode,
-                             car_name=car_name, notes=notes,
-                             start_coord=start_coord, end_coord=end_coord)
-            _t1 = time.perf_counter()
-            print(f"[perf] leg1 done: {_t1-_t0:.3f}s", flush=True)
+                             car_name=car_name, notes=notes)
             if round_trip:
-                print(f"[perf] leg2 start (swapped) sc={end_coord} ec={start_coord}", flush=True)
                 log_trip(date=date, start=end, end=start, mode=mode,
-                         car_name=car_name, notes=notes,
-                         start_coord=end_coord, end_coord=start_coord)
-                print(f"[perf] leg2 done: {time.perf_counter()-_t1:.3f}s", flush=True)
-        except ORSError as exc:
+                         car_name=car_name, notes=notes)
+        except MapsError as exc:
             return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 
         return redirect(url_for("index", logged=f"{miles:.1f}", round_trip="1" if round_trip else "0"))
@@ -149,19 +127,19 @@ def _register_routes(app):
         except (KeyError, ValueError):
             return jsonify({"error": "lon and lat required"}), 400
         try:
-            from ors import reverse_geocode
+            from gmaps import reverse_geocode
             return jsonify({"label": reverse_geocode(lon, lat)})
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
     @app.route("/api/geocode")
     def api_geocode():
-        """Diagnostic: show what coordinates ORS resolves for a given address string."""
+        """Diagnostic: show what coordinates Google resolves for a given address string."""
         q = request.args.get("q", "").strip()
         if not q:
             return jsonify({"error": "q param required"}), 400
         try:
-            from ors import geocode
+            from gmaps import geocode
             lon, lat = geocode(q)
             return jsonify({
                 "query": q,
@@ -174,43 +152,41 @@ def _register_routes(app):
 
     @app.route("/api/route-debug")
     def api_route_debug():
-        """Diagnostic: show the ORS route between two addresses with a Google Maps link."""
+        """Diagnostic: show the Google route between two addresses."""
         import requests as _requests
         start = request.args.get("start", "").strip()
         end   = request.args.get("end",   "").strip()
         if not start or not end:
             return jsonify({"error": "start and end params required"}), 400
         try:
-            from ors import geocode, BASE_URL, _headers, ORSError
-            start_coord = geocode(start)
-            end_coord   = geocode(end)
-            resp = _requests.post(
-                f"{BASE_URL}/v2/directions/driving-car",
-                headers={**_headers(), "Content-Type": "application/json"},
-                params={"api_key": config.ORS_API_KEY},
-                json={"coordinates": [list(start_coord), list(end_coord)]},
+            resp = _requests.get(
+                "https://maps.googleapis.com/maps/api/directions/json",
+                params={
+                    "origin":      start,
+                    "destination": end,
+                    "mode":        "driving",
+                    "key":         config.GOOGLE_MAPS_API_KEY,
+                },
                 timeout=15,
             )
             data = resp.json()
-            if resp.status_code != 200:
-                return jsonify({"error": data}), 502
-            summary = data["routes"][0]["summary"]
-            steps   = data["routes"][0]["segments"][0]["steps"]
-            miles   = summary["distance"] / 1609.344
-            route_steps = [
+            if data["status"] != "OK":
+                return jsonify({"error": data["status"]}), 502
+            leg   = data["routes"][0]["legs"][0]
+            miles = leg["distance"]["value"] / 1609.344
+            steps = [
                 {
-                    "instruction": s.get("instruction", ""),
-                    "name":        s.get("name", ""),
-                    "distance_mi": round(s["distance"] / 1609.344, 2),
+                    "instruction": s.get("html_instructions", ""),
+                    "distance_mi": round(s["distance"]["value"] / 1609.344, 2),
                 }
-                for s in steps
+                for s in leg["steps"]
             ]
             return jsonify({
-                "start":        {"query": start, "lon": start_coord[0], "lat": start_coord[1]},
-                "end":          {"query": end,   "lon": end_coord[0],   "lat": end_coord[1]},
+                "start":        {"query": start},
+                "end":          {"query": end},
                 "miles":        round(miles, 2),
-                "duration_min": round(summary["duration"] / 60, 1),
-                "steps":        route_steps,
+                "duration_min": round(leg["duration"]["value"] / 60, 1),
+                "steps":        steps,
             })
         except Exception as e:
             return jsonify({"error": str(e)}), 502

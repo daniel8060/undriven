@@ -35,13 +35,6 @@ document.getElementById('btn-swap').addEventListener('click', () => {
   const a = document.getElementById('f-start');
   const b = document.getElementById('f-end');
   [a.value, b.value] = [b.value, a.value];
-
-  const aLon = document.getElementById('f-start-lon');
-  const aLat = document.getElementById('f-start-lat');
-  const bLon = document.getElementById('f-end-lon');
-  const bLat = document.getElementById('f-end-lat');
-  [aLon.value, bLon.value] = [bLon.value, aLon.value];
-  [aLat.value, bLat.value] = [bLat.value, aLat.value];
 });
 
 // ── Round trip toggle ──
@@ -63,9 +56,5 @@ btnRoundtrip.addEventListener('click', () => {
 
 // ── Spinner on submit ──
 document.querySelector('form[action="/log"]').addEventListener('submit', function () {
-  console.log('[submit] start_lon=' + document.getElementById('f-start-lon').value
-    + ' start_lat=' + document.getElementById('f-start-lat').value
-    + ' end_lon=' + document.getElementById('f-end-lon').value
-    + ' end_lat=' + document.getElementById('f-end-lat').value);
   document.getElementById('spinnerOverlay').classList.add('active');
 });

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ORS_API_KEY = os.environ["ORS_API_KEY"]  # required — set in .env
+GOOGLE_MAPS_API_KEY = os.environ["GOOGLE_MAPS_API_KEY"]  # required — set in .env
 
 SHEET_ID = os.environ.get("SHEET_ID", "")
 SHEET_TAB = os.environ.get("SHEET_TAB", "Sheet1")
@@ -19,11 +19,6 @@ CARS = {
 # Leave as None to use ORS defaults (may return distant results for ambiguous names).
 GEOCODE_FOCUS = {"lon": -122.04, "lat": 37.37}  # Sunnyvale, CA
 
-# Autocomplete quality filters — restrict layer types and geographic boundary.
-# layers: only return actionable trip endpoints (addresses, venues, streets).
-# boundary.country: ISO-3166 alpha-3 codes; comma-separated for multiple.
-AUTOCOMPLETE_LAYERS = os.environ.get("AUTOCOMPLETE_LAYERS", "address,venue,street")
-AUTOCOMPLETE_BOUNDARY_COUNTRIES = os.environ.get("AUTOCOMPLETE_BOUNDARY_COUNTRIES", "USA,CAN")
 
 CO2_KG_PER_GALLON = {
     "gasoline": 8.887,
