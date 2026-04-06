@@ -10,6 +10,7 @@ function setupAutocomplete(inputId, dropdownId) {
   let reqSeq     = 0; // incremented per request; stale responses are discarded
 
   function setCoords(lon, lat) {
+    console.log('[ac] setCoords', inputId, lon, lat, 'lonField:', lonField, 'latField:', latField);
     if (lonField) lonField.value = lon ?? '';
     if (latField) latField.value = lat ?? '';
   }

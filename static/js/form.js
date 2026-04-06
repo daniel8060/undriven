@@ -63,5 +63,9 @@ btnRoundtrip.addEventListener('click', () => {
 
 // ── Spinner on submit ──
 document.querySelector('form[action="/log"]').addEventListener('submit', function () {
+  console.log('[submit] start_lon=' + document.getElementById('f-start-lon').value
+    + ' start_lat=' + document.getElementById('f-start-lat').value
+    + ' end_lon=' + document.getElementById('f-end-lon').value
+    + ' end_lat=' + document.getElementById('f-end-lat').value);
   document.getElementById('spinnerOverlay').classList.add('active');
 });
