@@ -29,6 +29,14 @@ def create_app(test_config=None):
     with app.app_context():
         db.create_all()
 
+    import subprocess
+    try:
+        rev = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"],
+                                      cwd=basedir, text=True).strip()
+    except Exception:
+        rev = "0"
+    app.config["GIT_REV"] = rev
+
     _register_routes(app)
     return app
 
@@ -52,6 +60,7 @@ def _register_routes(app):
             logged=logged,
             error=error,
             round_trip=round_trip,
+            rev=app.config["GIT_REV"],
         )
 
     @app.route("/log", methods=["POST"])
@@ -86,6 +95,7 @@ def _register_routes(app):
 
         try:
             import time
+            print(f"[form] start_lon={request.form.get('start_lon')!r} start_lat={request.form.get('start_lat')!r} end_lon={request.form.get('end_lon')!r} end_lat={request.form.get('end_lat')!r}", flush=True)
             _t0 = time.perf_counter()
             coord_src = "autocomplete" if start_coord and end_coord else "geocode"
             print(f"[perf] leg1 start ({coord_src}) sc={start_coord} ec={end_coord}", flush=True)
