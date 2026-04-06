@@ -159,33 +159,38 @@ def _register_routes(app):
         if not start or not end:
             return jsonify({"error": "start and end params required"}), 400
         try:
-            resp = _requests.get(
-                "https://maps.googleapis.com/maps/api/directions/json",
-                params={
-                    "origin":      start,
-                    "destination": end,
-                    "mode":        "driving",
-                    "key":         config.GOOGLE_MAPS_API_KEY,
+            resp = _requests.post(
+                "https://routes.googleapis.com/directions/v2:computeRoutes",
+                headers={
+                    "X-Goog-Api-Key": config.GOOGLE_MAPS_API_KEY,
+                    "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "origin":      {"address": start},
+                    "destination": {"address": end},
+                    "travelMode":  "DRIVE",
                 },
                 timeout=15,
             )
             data = resp.json()
-            if data["status"] != "OK":
-                return jsonify({"error": data["status"]}), 502
-            leg   = data["routes"][0]["legs"][0]
-            miles = leg["distance"]["value"] / 1609.344
+            if "error" in data:
+                return jsonify({"error": data["error"]}), 502
+            route = data["routes"][0]
+            miles = route["distanceMeters"] / 1609.344
+            duration_s = int(route["duration"].rstrip("s"))
             steps = [
                 {
-                    "instruction": s.get("html_instructions", ""),
-                    "distance_mi": round(s["distance"]["value"] / 1609.344, 2),
+                    "instruction": s.get("navigationInstruction", {}).get("instructions", ""),
+                    "distance_mi": round(s.get("distanceMeters", 0) / 1609.344, 2),
                 }
-                for s in leg["steps"]
+                for s in route.get("legs", [{}])[0].get("steps", [])
             ]
             return jsonify({
                 "start":        {"query": start},
                 "end":          {"query": end},
                 "miles":        round(miles, 2),
-                "duration_min": round(leg["duration"]["value"] / 60, 1),
+                "duration_min": round(duration_s / 60, 1),
                 "steps":        steps,
             })
         except Exception as e:
