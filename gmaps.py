@@ -69,7 +69,8 @@ def autocomplete(text: str, focus: dict | None = None) -> list[dict]:
         json=body,
         timeout=5,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        raise MapsError(f"Places API HTTP {resp.status_code}: {resp.text[:200]}")
     data = resp.json()
     return [
         {"label": s["placePrediction"]["text"]["text"], "lon": None, "lat": None}
@@ -94,7 +95,8 @@ def driving_miles(start: str, end: str) -> float:
         },
         timeout=15,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        raise MapsError(f"Routes API HTTP {resp.status_code}: {resp.text[:200]}")
     data = resp.json()
     if "error" in data:
         msg = data["error"].get("message", str(data["error"]))
