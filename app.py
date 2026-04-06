@@ -73,10 +73,25 @@ def _register_routes(app):
         if car_raw and car_name is None:
             return redirect(url_for("index", error=f"Unknown car: {car_raw!r}. Check config.py."))
 
+        def _parse_coord(lon_str, lat_str):
+            try:
+                return (float(lon_str), float(lat_str))
+            except (TypeError, ValueError):
+                return None
+
+        start_coord = _parse_coord(
+            request.form.get("start_lon", ""), request.form.get("start_lat", ""))
+        end_coord   = _parse_coord(
+            request.form.get("end_lon",   ""), request.form.get("end_lat",   ""))
+
         try:
-            miles = log_trip(date=date, start=start, end=end, mode=mode, car_name=car_name, notes=notes)
+            miles = log_trip(date=date, start=start, end=end, mode=mode,
+                             car_name=car_name, notes=notes,
+                             start_coord=start_coord, end_coord=end_coord)
             if round_trip:
-                log_trip(date=date, start=end, end=start, mode=mode, car_name=car_name, notes=notes)
+                log_trip(date=date, start=end, end=start, mode=mode,
+                         car_name=car_name, notes=notes,
+                         start_coord=end_coord, end_coord=start_coord)
         except ORSError as exc:
             return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 

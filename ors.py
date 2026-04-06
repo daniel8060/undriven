@@ -90,13 +90,21 @@ def autocomplete(text: str, focus: dict | None = None) -> list[dict]:
     ]
 
 
-def driving_miles(start: str, end: str) -> float:
-    # Geocode both endpoints in parallel to halve round-trip time
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        fut_start = pool.submit(geocode, start)
-        fut_end   = pool.submit(geocode, end)
-        start_coord = fut_start.result()
-        end_coord   = fut_end.result()
+def driving_miles(start: str, end: str,
+                  start_coord: tuple | None = None,
+                  end_coord:   tuple | None = None) -> float:
+    # Use pre-computed coordinates if provided; otherwise geocode what's missing.
+    # Passing both skips all geocoding (the common case when autocomplete was used).
+    if start_coord is None and end_coord is None:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            fut_start = pool.submit(geocode, start)
+            fut_end   = pool.submit(geocode, end)
+            start_coord = fut_start.result()
+            end_coord   = fut_end.result()
+    elif start_coord is None:
+        start_coord = geocode(start)
+    elif end_coord is None:
+        end_coord = geocode(end)
 
     resp = requests.post(
         f"{BASE_URL}/v2/directions/driving-car",

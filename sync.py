@@ -32,12 +32,15 @@ def log_trip(
     mode: str,
     car_name: str | None,
     notes: str,
+    start_coord: tuple | None = None,
+    end_coord:   tuple | None = None,
 ) -> float:
     """
     Resolve driving miles via ORS, compute CO2, and persist the trip.
     Returns the resolved miles. Raises ORSError if geocoding/routing fails.
+    Pre-computed coordinates can be passed to skip geocoding entirely.
     """
-    miles = driving_miles(start, end)
+    miles = driving_miles(start, end, start_coord=start_coord, end_coord=end_coord)
     co2 = co2_for_car(car_name, miles) if car_name else 0.0
 
     insert_trip(
