@@ -105,8 +105,17 @@ a { color: var(--accent); text-decoration: none; }
 
 .form-header {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: .85rem;
+}
+
+.form-title {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .form-divider {
