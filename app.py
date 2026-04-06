@@ -88,16 +88,18 @@ def _register_routes(app):
             import time
             _t0 = time.perf_counter()
             coord_src = "autocomplete" if start_coord and end_coord else "geocode"
+            print(f"[perf] leg1 start ({coord_src}) sc={start_coord} ec={end_coord}", flush=True)
             miles = log_trip(date=date, start=start, end=end, mode=mode,
                              car_name=car_name, notes=notes,
                              start_coord=start_coord, end_coord=end_coord)
             _t1 = time.perf_counter()
-            print(f"[perf] leg1 ({coord_src}): {_t1-_t0:.3f}s", flush=True)
+            print(f"[perf] leg1 done: {_t1-_t0:.3f}s", flush=True)
             if round_trip:
+                print(f"[perf] leg2 start (swapped) sc={end_coord} ec={start_coord}", flush=True)
                 log_trip(date=date, start=end, end=start, mode=mode,
                          car_name=car_name, notes=notes,
                          start_coord=end_coord, end_coord=start_coord)
-                print(f"[perf] leg2 (coords swapped): {time.perf_counter()-_t1:.3f}s", flush=True)
+                print(f"[perf] leg2 done: {time.perf_counter()-_t1:.3f}s", flush=True)
         except ORSError as exc:
             return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 
