@@ -146,7 +146,7 @@ a { color: var(--accent); text-decoration: none; }
 /* Meta row — date, mode, car, notes */
 .meta-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .75rem;
   align-items: end;
 }
