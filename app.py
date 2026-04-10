@@ -1,10 +1,11 @@
 import os
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_migrate import Migrate
 
 import config
-from models import db
+from models import User, db
 
 MODES = ["bike", "walk", "train", "bus", "scooter", "other"]
 
@@ -26,6 +27,13 @@ def create_app(test_config=None):
     db.init_app(app)
     Migrate(app, db)
 
+    login_manager = LoginManager(app)
+    login_manager.login_view = "login"
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.get(User, int(user_id))
+
     import subprocess
     try:
         rev = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"],
@@ -35,7 +43,27 @@ def create_app(test_config=None):
     app.config["GIT_REV"] = rev
 
     _register_routes(app)
+    _register_cli(app)
     return app
+
+
+def _register_cli(app):
+    import click
+
+    @app.cli.command("create-user")
+    @click.argument("username")
+    @click.password_option(prompt="Password", confirmation_prompt=True)
+    def create_user(username, password):
+        """Create a new user account."""
+        with app.app_context():
+            if User.query.filter_by(username=username).first():
+                click.echo(f"Error: username '{username}' already exists.", err=True)
+                raise SystemExit(1)
+            u = User(username=username)
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            click.echo(f"Created user '{username}' (id={u.id}).")
 
 
 def _register_routes(app):
@@ -43,7 +71,36 @@ def _register_routes(app):
     from gmaps import MapsError, autocomplete
     from sync import log_trip, parse_car
 
+    # ── Auth ─────────────────────────────────────────────────────────────────
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        if current_user.is_authenticated:
+            return redirect(url_for("index"))
+        error = None
+        username = ""
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            next_url = request.form.get("next") or url_for("index")
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(password):
+                login_user(user)
+                return redirect(next_url)
+            error = "Invalid username or password."
+        next_url = request.args.get("next", "")
+        return render_template("login.html", error=error, username=username, next=next_url)
+
+    @app.route("/logout", methods=["POST"])
+    @login_required
+    def logout():
+        logout_user()
+        return redirect(url_for("login"))
+
+    # ── Main routes ───────────────────────────────────────────────────────────
+
     @app.route("/")
+    @login_required
     def index():
         summary    = get_summary()
         logged     = request.args.get("logged")
@@ -61,6 +118,7 @@ def _register_routes(app):
         )
 
     @app.route("/log", methods=["POST"])
+    @login_required
     def log():
         date       = request.form.get("date",       "").strip()
         start      = request.form.get("start",      "").strip()
@@ -91,12 +149,14 @@ def _register_routes(app):
         return redirect(url_for("index", logged=f"{miles:.1f}", round_trip="1" if round_trip else "0"))
 
     @app.route("/trips")
+    @login_required
     def trips():
         all_trips = get_all_trips()
         deleted   = request.args.get("deleted")
         return render_template("trips.html", trips=all_trips, deleted=deleted)
 
     @app.route("/trips/<int:trip_id>/delete", methods=["POST"])
+    @login_required
     def trip_delete(trip_id):
         delete_trip(trip_id)
         return redirect(url_for("trips", deleted="1"))
@@ -104,6 +164,7 @@ def _register_routes(app):
     # ── API ──────────────────────────────────────────────────────────────────
 
     @app.route("/api/autocomplete")
+    @login_required
     def api_autocomplete():
         q = request.args.get("q", "").strip()
         if len(q) < 2:
@@ -117,6 +178,7 @@ def _register_routes(app):
             return jsonify([])
 
     @app.route("/api/reverse-geocode")
+    @login_required
     def api_reverse_geocode():
         try:
             lon = float(request.args["lon"])
@@ -130,6 +192,7 @@ def _register_routes(app):
             return jsonify({"error": str(e)}), 502
 
     @app.route("/api/geocode")
+    @login_required
     def api_geocode():
         """Diagnostic: show what coordinates Google resolves for a given address string."""
         q = request.args.get("q", "").strip()
@@ -148,6 +211,7 @@ def _register_routes(app):
             return jsonify({"error": str(e)}), 502
 
     @app.route("/api/route-debug")
+    @login_required
     def api_route_debug():
         """Diagnostic: show the Google route between two addresses."""
         import requests as _requests
@@ -194,10 +258,12 @@ def _register_routes(app):
             return jsonify({"error": str(e)}), 502
 
     @app.route("/api/summary")
+    @login_required
     def api_summary():
         return jsonify(get_summary())
 
     @app.route("/api/sync", methods=["POST"])
+    @login_required
     def api_sync():
         try:
             from sync_sheets import run_sync
