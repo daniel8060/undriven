@@ -77,7 +77,7 @@
       <p>all logged trips, most recent first</p>
     </div>
     <nav style="display:flex;gap:1.25rem;align-items:center">
-      <a href="{{ url_for('cars') }}" style="font-size:.85rem;color:var(--muted)">Cars</a>
+      <button onclick="openCarsModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Cars</button>
       <a href="{{ url_for('index') }}" style="font-size:.85rem;color:var(--muted)">← Dashboard</a>
       <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
         <button type="submit" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Sign out</button>
@@ -153,5 +153,8 @@
   </div>
 
 </div>
+
+{% include '_cars_modal.html' %}
+<script src="{{ url_for('static', filename='js/cars.js') }}?v={{ rev }}"></script>
 </body>
 </html>

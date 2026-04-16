@@ -211,15 +211,15 @@ def _register_routes(app):
     @app.route("/cars")
     @login_required
     def cars():
-        return render_template("cars.html", user_cars=current_user.cars,
-                               rev=app.config["GIT_REV"])
+        return redirect(url_for("index"))
 
     @app.route("/trips")
     @login_required
     def trips():
         all_trips = get_all_trips()
         deleted   = request.args.get("deleted")
-        return render_template("trips.html", trips=all_trips, deleted=deleted)
+        return render_template("trips.html", trips=all_trips, deleted=deleted,
+                               user_cars=current_user.cars, rev=app.config["GIT_REV"])
 
     @app.route("/trips/<int:trip_id>/delete", methods=["POST"])
     @login_required

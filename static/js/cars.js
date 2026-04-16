@@ -1,17 +1,34 @@
-/* Cars CRUD — /cars page */
+/* Cars modal — included on index and trips pages */
 
 const FUEL_TYPES = ["gasoline", "diesel", "hybrid", "electric"];
 
-function flash(msg, type = "success") {
-  const existing = document.getElementById("flash-banner");
-  if (existing) existing.remove();
-  const el = document.createElement("div");
-  el.id = "flash-banner";
-  el.className = `flash ${type}`;
-  el.textContent = msg;
-  document.querySelector(".page").insertBefore(el, document.getElementById("cars-card"));
-  setTimeout(() => el.remove(), 4000);
+// ── Modal open / close ────────────────────────────────────────────────────────
+
+const backdrop = document.getElementById("carsModalBackdrop");
+
+function openCarsModal() {
+  backdrop.classList.add("open");
+  document.body.style.overflow = "hidden";
 }
+
+function closeCarsModal() {
+  backdrop.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("carsModalClose").addEventListener("click", closeCarsModal);
+backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeCarsModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeCarsModal(); });
+
+// ── Flash (inside modal) ──────────────────────────────────────────────────────
+
+function flash(msg, type = "success") {
+  const container = document.getElementById("cars-modal-flash");
+  container.innerHTML = `<div class="modal-flash ${type}">${msg}</div>`;
+  setTimeout(() => { container.innerHTML = ""; }, 4000);
+}
+
+// ── API helper ────────────────────────────────────────────────────────────────
 
 async function apiFetch(url, opts = {}) {
   const resp = await fetch(url, {
@@ -22,7 +39,7 @@ async function apiFetch(url, opts = {}) {
   return resp.json();
 }
 
-// ── Add car ──────────────────────────────────────────────────────────────────
+// ── Add car ───────────────────────────────────────────────────────────────────
 
 document.getElementById("add-car-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -40,6 +57,7 @@ document.getElementById("add-car-form").addEventListener("submit", async (e) => 
   addRow(data);
   e.target.reset();
   flash(`"${data.name}" added.`);
+  syncCarDropdown();
 });
 
 // ── Row rendering ─────────────────────────────────────────────────────────────
@@ -55,6 +73,7 @@ function addRow(car) {
   const tr = document.createElement("tr");
   tr.dataset.id = car.id;
   tr.innerHTML = rowHTML(car);
+  stashData(tr, car);
   tbody.appendChild(tr);
   bindRowEvents(tr);
   updateEmptyState();
@@ -90,13 +109,100 @@ function editRowHTML(car) {
     </td>`;
 }
 
+function stashData(tr, car) {
+  tr.dataset.name      = car.name ?? tr.querySelector(".car-name")?.textContent ?? "";
+  tr.dataset.mpg       = car.mpg  ?? tr.querySelector(".car-mpg")?.textContent  ?? "";
+  tr.dataset.fuel      = car.fuel_type ?? tr.querySelector(".car-fuel")?.textContent?.trim() ?? "";
+  tr.dataset.isDefault = (car.is_default ?? tr.querySelector(".default-badge") !== null).toString();
+}
+
 function bindRowEvents(tr) {
   tr.querySelector(".btn-delete")?.addEventListener("click", () => handleDelete(tr));
-  tr.querySelector(".btn-edit")?.addEventListener("click", () => handleEditStart(tr));
+  tr.querySelector(".btn-edit")?.addEventListener("click",   () => handleEditStart(tr));
   tr.querySelector(".btn-set-default")?.addEventListener("click", () => handleSetDefault(tr));
-  tr.querySelector(".btn-save")?.addEventListener("click", () => handleSave(tr));
+  tr.querySelector(".btn-save")?.addEventListener("click",   () => handleSave(tr));
   tr.querySelector(".btn-cancel")?.addEventListener("click", () => handleCancel(tr));
   bindDragEvents(tr);
+}
+
+// ── CRUD handlers ─────────────────────────────────────────────────────────────
+
+async function handleDelete(tr) {
+  const name = tr.querySelector(".car-name")?.textContent;
+  if (!confirm(`Delete "${name}"?`)) return;
+  const data = await apiFetch(`/api/cars/${tr.dataset.id}`, { method: "DELETE" });
+  if (data?.error) { flash(data.error, "error"); return; }
+  tr.remove();
+  updateEmptyState();
+  flash(`"${name}" deleted.`);
+  syncCarDropdown();
+  const firstRow = document.querySelector("#cars-tbody tr");
+  if (firstRow && !firstRow.querySelector(".default-badge")) {
+    firstRow.querySelector(".btn-set-default")?.click();
+  }
+}
+
+function handleEditStart(tr) {
+  const car = {
+    id:        tr.dataset.id,
+    name:      tr.querySelector(".car-name").textContent,
+    mpg:       parseFloat(tr.querySelector(".car-mpg").textContent),
+    fuel_type: tr.querySelector(".car-fuel").textContent.trim(),
+  };
+  tr.innerHTML = editRowHTML(car);
+  bindRowEvents(tr);
+  tr.querySelector("#edit-name").focus();
+}
+
+async function handleSave(tr) {
+  const name      = tr.querySelector("#edit-name").value.trim();
+  const mpg       = parseFloat(tr.querySelector("#edit-mpg").value);
+  const fuel_type = tr.querySelector(".inline-select").value;
+
+  const data = await apiFetch(`/api/cars/${tr.dataset.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name, mpg, fuel_type }),
+  });
+  if (data.error) { flash(data.error, "error"); return; }
+  tr.innerHTML = rowHTML(data);
+  stashData(tr, data);
+  bindRowEvents(tr);
+  flash(`"${data.name}" saved.`);
+  syncCarDropdown();
+}
+
+function handleCancel(tr) {
+  const car = {
+    id:        tr.dataset.id,
+    name:      tr.dataset.name,
+    mpg:       parseFloat(tr.dataset.mpg),
+    fuel_type: tr.dataset.fuel,
+    is_default: tr.dataset.isDefault === "true",
+  };
+  tr.innerHTML = rowHTML(car);
+  bindRowEvents(tr);
+}
+
+async function handleSetDefault(tr) {
+  const data = await apiFetch(`/api/cars/${tr.dataset.id}/set-default`, { method: "POST" });
+  if (data?.error) { flash(data.error, "error"); return; }
+  document.querySelectorAll("#cars-tbody tr").forEach(row => {
+    if (row === tr) {
+      row.querySelector(".btn-set-default")?.outerHTML;
+      const btn = row.querySelector(".btn-set-default");
+      if (btn) btn.outerHTML = `<span class="default-badge">default</span>`;
+      row.dataset.isDefault = "true";
+    } else {
+      const badge = row.querySelector(".default-badge");
+      if (badge) {
+        badge.outerHTML = `<button class="btn-set-default">Set default</button>`;
+        row.querySelector(".btn-set-default").addEventListener("click", () => handleSetDefault(row));
+      }
+      row.dataset.isDefault = "false";
+    }
+  });
+  flash("Default car updated.");
+  syncCarDropdown();
 }
 
 // ── Drag-to-reorder ───────────────────────────────────────────────────────────
@@ -148,78 +254,28 @@ function bindDragEvents(tr) {
 async function persistOrder() {
   const ids = [...document.querySelectorAll("#cars-tbody tr")].map(tr => parseInt(tr.dataset.id));
   await apiFetch("/api/cars/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+  syncCarDropdown();
 }
 
-// ── Handlers ──────────────────────────────────────────────────────────────────
+// ── Sync the log-form car dropdown (if present on this page) ──────────────────
 
-async function handleDelete(tr) {
-  const name = tr.querySelector(".car-name")?.textContent;
-  if (!confirm(`Delete "${name}"?`)) return;
-  const data = await apiFetch(`/api/cars/${tr.dataset.id}`, { method: "DELETE" });
-  if (data && data.error) { flash(data.error, "error"); return; }
-  tr.remove();
-  updateEmptyState();
-  flash(`"${name}" deleted.`);
-  const firstRow = document.querySelector("#cars-tbody tr");
-  if (firstRow && !firstRow.querySelector(".default-badge")) {
-    const btn = firstRow.querySelector(".btn-set-default");
-    if (btn) btn.click();
-  }
-}
+function syncCarDropdown() {
+  const select = document.getElementById("f-car");
+  if (!select) return;
 
-function handleEditStart(tr) {
-  const car = {
-    id:        tr.dataset.id,
-    name:      tr.querySelector(".car-name").textContent,
-    mpg:       parseFloat(tr.querySelector(".car-mpg").textContent),
-    fuel_type: tr.querySelector(".car-fuel").textContent.trim(),
-  };
-  tr.innerHTML = editRowHTML(car);
-  bindRowEvents(tr);
-  tr.querySelector("#edit-name").focus();
-}
+  const currentVal = select.value;
+  // Clear all options except "— none —"
+  while (select.options.length > 1) select.remove(1);
 
-async function handleSave(tr) {
-  const name      = tr.querySelector("#edit-name").value.trim();
-  const mpg       = parseFloat(tr.querySelector("#edit-mpg").value);
-  const fuel_type = tr.querySelector(".inline-select").value;
-
-  const data = await apiFetch(`/api/cars/${tr.dataset.id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ name, mpg, fuel_type }),
+  document.querySelectorAll("#cars-tbody tr").forEach(tr => {
+    const name = tr.querySelector(".car-name")?.textContent;
+    if (!name) return;
+    const opt = new Option(name, name);
+    const isDefault = tr.querySelector(".default-badge") !== null;
+    if (isDefault && !currentVal) opt.selected = true;
+    else if (name === currentVal) opt.selected = true;
+    select.add(opt);
   });
-  if (data.error) { flash(data.error, "error"); return; }
-  tr.innerHTML = rowHTML(data);
-  bindRowEvents(tr);
-  flash(`"${data.name}" saved.`);
-}
-
-function handleCancel(tr) {
-  const car = {
-    id:        tr.dataset.id,
-    name:      tr.dataset.name,
-    mpg:       parseFloat(tr.dataset.mpg),
-    fuel_type: tr.dataset.fuel,
-    is_default: tr.dataset.isDefault === "true",
-  };
-  tr.innerHTML = rowHTML(car);
-  bindRowEvents(tr);
-}
-
-async function handleSetDefault(tr) {
-  const data = await apiFetch(`/api/cars/${tr.dataset.id}/set-default`, { method: "POST" });
-  if (data.error) { flash(data.error, "error"); return; }
-  document.querySelectorAll("#cars-tbody tr").forEach(row => {
-    const badge = row.querySelector(".default-badge");
-    const btn   = row.querySelector(".btn-set-default");
-    if (row === tr) {
-      if (btn) btn.outerHTML = `<span class="default-badge">default</span>`;
-    } else {
-      if (badge) badge.outerHTML = `<button class="btn-set-default">Set default</button>`;
-      row.querySelector(".btn-set-default")?.addEventListener("click", () => handleSetDefault(row));
-    }
-  });
-  flash("Default car updated.");
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
@@ -229,17 +285,14 @@ function esc(str) {
 }
 
 function updateEmptyState() {
-  const tbody = document.getElementById("cars-tbody");
   const empty = document.getElementById("cars-empty");
+  const tbody = document.getElementById("cars-tbody");
   if (empty) empty.style.display = tbody.children.length === 0 ? "" : "none";
 }
 
-// ── Init — bind events on server-rendered rows ────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 document.querySelectorAll("#cars-tbody tr").forEach(tr => {
-  tr.dataset.name      = tr.querySelector(".car-name")?.textContent || "";
-  tr.dataset.mpg       = tr.querySelector(".car-mpg")?.textContent || "";
-  tr.dataset.fuel      = tr.querySelector(".car-fuel")?.textContent.trim() || "";
-  tr.dataset.isDefault = tr.querySelector(".default-badge") ? "true" : "false";
+  stashData(tr, {});
   bindRowEvents(tr);
 });
