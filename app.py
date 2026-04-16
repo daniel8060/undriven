@@ -5,7 +5,7 @@ from flask_login import LoginManager, current_user, login_required, login_user, 
 from flask_migrate import Migrate
 
 import config
-from models import User, db
+from models import SavedCar, User, db
 
 MODES = ["bike", "walk", "train", "bus", "scooter", "other"]
 
@@ -65,6 +65,39 @@ def _register_cli(app):
             db.session.commit()
             click.echo(f"Created user '{username}' (id={u.id}).")
 
+    @app.cli.command("seed-cars")
+    @click.argument("username")
+    def seed_cars(username):
+        """Seed saved cars from config.CARS for an existing user."""
+        with app.app_context():
+            user = User.query.filter_by(username=username).first()
+            if not user:
+                click.echo(f"Error: user '{username}' not found.", err=True)
+                raise SystemExit(1)
+            added = 0
+            for i, (name, spec) in enumerate(config.CARS.items()):
+                if SavedCar.query.filter_by(user_id=user.id, name=name).first():
+                    click.echo(f"  skip '{name}' (already exists)")
+                    continue
+                car = SavedCar(
+                    user_id=user.id,
+                    name=name,
+                    mpg=spec["mpg"],
+                    fuel_type=spec.get("fuel_type", "gasoline"),
+                    is_default=(i == 0 and not SavedCar.query.filter_by(user_id=user.id, is_default=True).first()),
+                )
+                db.session.add(car)
+                added += 1
+                click.echo(f"  added '{name}' ({spec['mpg']} mpg, {spec.get('fuel_type','gasoline')})"
+                           + (" [default]" if car.is_default else ""))
+            db.session.commit()
+            click.echo(f"Done. {added} car(s) added for '{username}'.")
+
+
+def _user_cars_dict(user) -> dict:
+    """Return {name: {mpg, fuel_type}} for the given user's saved cars."""
+    return {c.name: {"mpg": c.mpg, "fuel_type": c.fuel_type} for c in user.cars}
+
 
 def _register_routes(app):
     from db import delete_trip, get_all_trips, get_summary
@@ -109,7 +142,7 @@ def _register_routes(app):
         return render_template(
             "index.html",
             summary=summary,
-            config_cars=config.CARS,
+            user_cars=current_user.cars,
             modes=MODES,
             logged=logged,
             error=error,
@@ -133,16 +166,17 @@ def _register_routes(app):
         if mode not in MODES:
             return redirect(url_for("index", error=f"Unknown mode: {mode!r}"))
 
-        car_name = parse_car(car_raw) if car_raw else None
+        cars = _user_cars_dict(current_user)
+        car_name = parse_car(car_raw, cars) if car_raw else None
         if car_raw and car_name is None:
-            return redirect(url_for("index", error=f"Unknown car: {car_raw!r}. Check config.py."))
+            return redirect(url_for("index", error=f"Unknown car: {car_raw!r}"))
 
         try:
             miles = log_trip(date=date, start=start, end=end, mode=mode,
-                             car_name=car_name, notes=notes)
+                             car_name=car_name, notes=notes, cars=cars)
             if round_trip:
                 log_trip(date=date, start=end, end=start, mode=mode,
-                         car_name=car_name, notes=notes)
+                         car_name=car_name, notes=notes, cars=cars)
         except MapsError as exc:
             return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 
@@ -161,7 +195,80 @@ def _register_routes(app):
         delete_trip(trip_id)
         return redirect(url_for("trips", deleted="1"))
 
-    # ── API ──────────────────────────────────────────────────────────────────
+    # ── Cars API ──────────────────────────────────────────────────────────────
+
+    @app.route("/api/cars", methods=["GET"])
+    @login_required
+    def api_cars_list():
+        return jsonify([
+            {"id": c.id, "name": c.name, "mpg": c.mpg,
+             "fuel_type": c.fuel_type, "is_default": c.is_default}
+            for c in current_user.cars
+        ])
+
+    @app.route("/api/cars", methods=["POST"])
+    @login_required
+    def api_cars_create():
+        data = request.get_json(force=True)
+        name      = (data.get("name") or "").strip()
+        mpg       = data.get("mpg")
+        fuel_type = (data.get("fuel_type") or "gasoline").strip()
+        if not name or mpg is None:
+            return jsonify({"error": "name and mpg are required"}), 400
+        try:
+            mpg = float(mpg)
+        except (TypeError, ValueError):
+            return jsonify({"error": "mpg must be a number"}), 400
+        if SavedCar.query.filter_by(user_id=current_user.id, name=name).first():
+            return jsonify({"error": f"car '{name}' already exists"}), 409
+
+        no_default_yet = not SavedCar.query.filter_by(user_id=current_user.id, is_default=True).first()
+        car = SavedCar(user_id=current_user.id, name=name, mpg=mpg,
+                       fuel_type=fuel_type, is_default=no_default_yet)
+        db.session.add(car)
+        db.session.commit()
+        return jsonify({"id": car.id, "name": car.name, "mpg": car.mpg,
+                        "fuel_type": car.fuel_type, "is_default": car.is_default}), 201
+
+    @app.route("/api/cars/<int:car_id>", methods=["PATCH"])
+    @login_required
+    def api_cars_update(car_id):
+        car = SavedCar.query.filter_by(id=car_id, user_id=current_user.id).first_or_404()
+        data = request.get_json(force=True)
+        if "name" in data:
+            car.name = data["name"].strip()
+        if "mpg" in data:
+            car.mpg = float(data["mpg"])
+        if "fuel_type" in data:
+            car.fuel_type = data["fuel_type"].strip()
+        db.session.commit()
+        return jsonify({"id": car.id, "name": car.name, "mpg": car.mpg,
+                        "fuel_type": car.fuel_type, "is_default": car.is_default})
+
+    @app.route("/api/cars/<int:car_id>", methods=["DELETE"])
+    @login_required
+    def api_cars_delete(car_id):
+        car = SavedCar.query.filter_by(id=car_id, user_id=current_user.id).first_or_404()
+        was_default = car.is_default
+        db.session.delete(car)
+        db.session.flush()
+        if was_default:
+            next_car = SavedCar.query.filter_by(user_id=current_user.id).first()
+            if next_car:
+                next_car.is_default = True
+        db.session.commit()
+        return "", 204
+
+    @app.route("/api/cars/<int:car_id>/set-default", methods=["POST"])
+    @login_required
+    def api_cars_set_default(car_id):
+        car = SavedCar.query.filter_by(id=car_id, user_id=current_user.id).first_or_404()
+        SavedCar.query.filter_by(user_id=current_user.id, is_default=True).update({"is_default": False})
+        car.is_default = True
+        db.session.commit()
+        return jsonify({"id": car.id, "is_default": True})
+
+    # ── Other API ─────────────────────────────────────────────────────────────
 
     @app.route("/api/autocomplete")
     @login_required

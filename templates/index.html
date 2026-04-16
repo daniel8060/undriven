@@ -104,8 +104,8 @@
           <label for="f-car">Car replaced</label>
           <select id="f-car" name="car">
             <option value="">— none —</option>
-            {% for name in config_cars %}
-              <option value="{{ name }}">{{ name }}</option>
+            {% for car in user_cars %}
+              <option value="{{ car.name }}"{% if car.is_default %} selected{% endif %}>{{ car.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -211,8 +211,9 @@
               <td class="mono">{{ "%.1f"|format(car.co2_kg) }}</td>
               <td class="mono">{{ "%.1f"|format(car.co2_kg * 2.20462) }}</td>
               <td class="mono">
-                {% if car.car_name in config_cars %}
-                  {{ "%.1f"|format(car.miles / config_cars[car.car_name].mpg) }}
+                {% set saved = user_cars | selectattr("name", "equalto", car.car_name) | first | default(none) %}
+                {% if saved %}
+                  {{ "%.1f"|format(car.miles / saved.mpg) }}
                 {% else %}
                   —
                 {% endif %}
