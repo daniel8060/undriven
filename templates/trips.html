@@ -76,7 +76,8 @@
       <h1>Trip History</h1>
       <p>all logged trips, most recent first</p>
     </div>
-    <nav>
+    <nav style="display:flex;gap:1.25rem;align-items:center">
+      <a href="{{ url_for('cars') }}" style="font-size:.85rem;color:var(--muted)">Cars</a>
       <a href="{{ url_for('index') }}" style="font-size:.85rem;color:var(--muted)">← Dashboard</a>
     </nav>
   </header>

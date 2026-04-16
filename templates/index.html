@@ -25,7 +25,8 @@
       <h1>Undriven</h1>
       <p>car miles replaced by human-powered &amp; transit trips</p>
     </div>
-    <nav>
+    <nav style="display:flex;gap:1.25rem;align-items:center">
+      <a href="{{ url_for('cars') }}" style="font-size:.85rem;color:var(--muted)">Cars</a>
       <a href="{{ url_for('trips') }}" style="font-size:.85rem;color:var(--muted)">History →</a>
     </nav>
   </header>

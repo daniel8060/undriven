@@ -182,6 +182,12 @@ def _register_routes(app):
 
         return redirect(url_for("index", logged=f"{miles:.1f}", round_trip="1" if round_trip else "0"))
 
+    @app.route("/cars")
+    @login_required
+    def cars():
+        return render_template("cars.html", user_cars=current_user.cars,
+                               rev=app.config["GIT_REV"])
+
     @app.route("/trips")
     @login_required
     def trips():
