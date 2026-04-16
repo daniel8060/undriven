@@ -124,6 +124,31 @@ def _register_routes(app):
         next_url = request.args.get("next", "")
         return render_template("login.html", error=error, username=username, next=next_url)
 
+    @app.route("/signup", methods=["GET", "POST"])
+    def signup():
+        if current_user.is_authenticated:
+            return redirect(url_for("index"))
+        error = None
+        username = ""
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            password2 = request.form.get("password2", "")
+            if not username or not password:
+                error = "Username and password are required."
+            elif password != password2:
+                error = "Passwords do not match."
+            elif User.query.filter_by(username=username).first():
+                error = "Username already taken."
+            else:
+                u = User(username=username)
+                u.set_password(password)
+                db.session.add(u)
+                db.session.commit()
+                login_user(u)
+                return redirect(url_for("index"))
+        return render_template("signup.html", error=error, username=username)
+
     @app.route("/logout", methods=["POST"])
     @login_required
     def logout():
