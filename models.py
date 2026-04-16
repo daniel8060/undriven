@@ -25,7 +25,8 @@ class User(UserMixin, db.Model):
     trips     = db.relationship("Trip",         back_populates="user", lazy="dynamic")
     addresses = db.relationship("SavedAddress", back_populates="user", lazy="select",
                                 order_by="SavedAddress.sort_order")
-    cars      = db.relationship("SavedCar",     back_populates="user", lazy="select")
+    cars      = db.relationship("SavedCar",     back_populates="user", lazy="select",
+                                order_by="SavedCar.sort_order")
 
     def set_password(self, password: str) -> None:
         self.password_hash = bcrypt.hashpw(
@@ -61,6 +62,7 @@ class SavedCar(db.Model):
     mpg        = db.Column(db.Float, nullable=False)
     fuel_type  = db.Column(db.String(20), nullable=False, default="gasoline")
     is_default = db.Column(db.Boolean, nullable=False, default=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
 
     user = db.relationship("User", back_populates="cars")
 

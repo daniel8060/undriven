@@ -138,6 +138,18 @@
       appearance: none;
     }
 
+    .drag-handle {
+      cursor: grab;
+      color: var(--border);
+      font-size: 1rem;
+      padding: .65rem .4rem .65rem .75rem !important;
+      user-select: none;
+      transition: color .15s;
+    }
+    .drag-handle:hover { color: var(--muted); }
+    tr.dragging { opacity: .4; }
+    tr.drag-over td { background: var(--accent-lt); }
+
     .empty-state {
       text-align: center;
       padding: 3rem 2rem;
@@ -162,6 +174,9 @@
     <nav style="display:flex;gap:1.25rem;align-items:center">
       <a href="{{ url_for('trips') }}" style="font-size:.85rem;color:var(--muted)">History</a>
       <a href="{{ url_for('index') }}" style="font-size:.85rem;color:var(--muted)">← Dashboard</a>
+      <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
+        <button type="submit" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Sign out</button>
+      </form>
     </nav>
   </header>
 
@@ -198,6 +213,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width:2rem"></th>
             <th>Name</th>
             <th>MPG</th>
             <th>Fuel</th>
@@ -212,6 +228,7 @@
               data-mpg="{{ car.mpg }}"
               data-fuel="{{ car.fuel_type }}"
               data-is-default="{{ 'true' if car.is_default else 'false' }}">
+            <td class="drag-handle" title="Drag to reorder">⠿</td>
             <td class="car-name">{{ car.name }}</td>
             <td class="car-mpg mono">{{ car.mpg }}</td>
             <td class="car-fuel" style="color:var(--muted);font-size:.84rem">{{ car.fuel_type }}</td>

@@ -62,6 +62,7 @@ function addRow(car) {
 
 function rowHTML(car) {
   return `
+    <td class="drag-handle" title="Drag to reorder">⠿</td>
     <td class="car-name">${esc(car.name)}</td>
     <td class="car-mpg mono">${car.mpg}</td>
     <td class="car-fuel" style="color:var(--muted);font-size:.84rem">${car.fuel_type}</td>
@@ -78,6 +79,7 @@ function rowHTML(car) {
 
 function editRowHTML(car) {
   return `
+    <td class="drag-handle" title="Drag to reorder">⠿</td>
     <td><input class="inline-input" id="edit-name" value="${esc(car.name)}"></td>
     <td><input class="inline-input inline-input--short" id="edit-mpg" type="number" step="0.1" min="0" value="${car.mpg}"></td>
     <td>${buildFuelSelect(car.fuel_type)}</td>
@@ -94,6 +96,58 @@ function bindRowEvents(tr) {
   tr.querySelector(".btn-set-default")?.addEventListener("click", () => handleSetDefault(tr));
   tr.querySelector(".btn-save")?.addEventListener("click", () => handleSave(tr));
   tr.querySelector(".btn-cancel")?.addEventListener("click", () => handleCancel(tr));
+  bindDragEvents(tr);
+}
+
+// ── Drag-to-reorder ───────────────────────────────────────────────────────────
+
+let dragSrc = null;
+
+function bindDragEvents(tr) {
+  const handle = tr.querySelector(".drag-handle");
+  if (!handle) return;
+
+  handle.addEventListener("mousedown", () => { tr.draggable = true; });
+  handle.addEventListener("mouseup",   () => { tr.draggable = false; });
+
+  tr.addEventListener("dragstart", (e) => {
+    dragSrc = tr;
+    e.dataTransfer.effectAllowed = "move";
+    setTimeout(() => tr.classList.add("dragging"), 0);
+  });
+
+  tr.addEventListener("dragend", () => {
+    tr.draggable = false;
+    tr.classList.remove("dragging");
+    document.querySelectorAll("#cars-tbody tr").forEach(r => r.classList.remove("drag-over"));
+    persistOrder();
+  });
+
+  tr.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragSrc && dragSrc !== tr) {
+      document.querySelectorAll("#cars-tbody tr").forEach(r => r.classList.remove("drag-over"));
+      tr.classList.add("drag-over");
+    }
+  });
+
+  tr.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (!dragSrc || dragSrc === tr) return;
+    const tbody = tr.closest("tbody");
+    const rows  = [...tbody.querySelectorAll("tr")];
+    const srcIdx = rows.indexOf(dragSrc);
+    const tgtIdx = rows.indexOf(tr);
+    if (srcIdx < tgtIdx) tbody.insertBefore(dragSrc, tr.nextSibling);
+    else                  tbody.insertBefore(dragSrc, tr);
+    tr.classList.remove("drag-over");
+  });
+}
+
+async function persistOrder() {
+  const ids = [...document.querySelectorAll("#cars-tbody tr")].map(tr => parseInt(tr.dataset.id));
+  await apiFetch("/api/cars/reorder", { method: "POST", body: JSON.stringify({ ids }) });
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -106,7 +160,6 @@ async function handleDelete(tr) {
   tr.remove();
   updateEmptyState();
   flash(`"${name}" deleted.`);
-  // If deleted row was default, mark the first remaining row as default
   const firstRow = document.querySelector("#cars-tbody tr");
   if (firstRow && !firstRow.querySelector(".default-badge")) {
     const btn = firstRow.querySelector(".btn-set-default");
@@ -142,7 +195,6 @@ async function handleSave(tr) {
 }
 
 function handleCancel(tr) {
-  // Re-fetch row state from the DOM data we saved
   const car = {
     id:        tr.dataset.id,
     name:      tr.dataset.name,
@@ -157,7 +209,6 @@ function handleCancel(tr) {
 async function handleSetDefault(tr) {
   const data = await apiFetch(`/api/cars/${tr.dataset.id}/set-default`, { method: "POST" });
   if (data.error) { flash(data.error, "error"); return; }
-  // Update all rows: clear other badges, set this one
   document.querySelectorAll("#cars-tbody tr").forEach(row => {
     const badge = row.querySelector(".default-badge");
     const btn   = row.querySelector(".btn-set-default");
@@ -186,7 +237,6 @@ function updateEmptyState() {
 // ── Init — bind events on server-rendered rows ────────────────────────────────
 
 document.querySelectorAll("#cars-tbody tr").forEach(tr => {
-  // Stash original values for cancel
   tr.dataset.name      = tr.querySelector(".car-name")?.textContent || "";
   tr.dataset.mpg       = tr.querySelector(".car-mpg")?.textContent || "";
   tr.dataset.fuel      = tr.querySelector(".car-fuel")?.textContent.trim() || "";

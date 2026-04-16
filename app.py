@@ -85,6 +85,7 @@ def _register_cli(app):
                     mpg=spec["mpg"],
                     fuel_type=spec.get("fuel_type", "gasoline"),
                     is_default=(i == 0 and not SavedCar.query.filter_by(user_id=user.id, is_default=True).first()),
+                    sort_order=SavedCar.query.filter_by(user_id=user.id).count(),
                 )
                 db.session.add(car)
                 added += 1
@@ -254,8 +255,9 @@ def _register_routes(app):
             return jsonify({"error": f"car '{name}' already exists"}), 409
 
         no_default_yet = not SavedCar.query.filter_by(user_id=current_user.id, is_default=True).first()
+        next_order = SavedCar.query.filter_by(user_id=current_user.id).count()
         car = SavedCar(user_id=current_user.id, name=name, mpg=mpg,
-                       fuel_type=fuel_type, is_default=no_default_yet)
+                       fuel_type=fuel_type, is_default=no_default_yet, sort_order=next_order)
         db.session.add(car)
         db.session.commit()
         return jsonify({"id": car.id, "name": car.name, "mpg": car.mpg,
@@ -287,6 +289,17 @@ def _register_routes(app):
             next_car = SavedCar.query.filter_by(user_id=current_user.id).first()
             if next_car:
                 next_car.is_default = True
+        db.session.commit()
+        return "", 204
+
+    @app.route("/api/cars/reorder", methods=["POST"])
+    @login_required
+    def api_cars_reorder():
+        ids = request.get_json(force=True).get("ids", [])
+        cars_by_id = {c.id: c for c in current_user.cars}
+        for order, car_id in enumerate(ids):
+            if car_id in cars_by_id:
+                cars_by_id[car_id].sort_order = order
         db.session.commit()
         return "", 204
 
