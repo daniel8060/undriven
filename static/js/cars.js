@@ -20,24 +20,7 @@ document.getElementById("carsModalClose").addEventListener("click", closeCarsMod
 backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeCarsModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeCarsModal(); });
 
-// ── Flash (inside modal) ──────────────────────────────────────────────────────
-
-function flash(msg, type = "success") {
-  const container = document.getElementById("cars-modal-flash");
-  container.innerHTML = `<div class="modal-flash ${type}">${msg}</div>`;
-  setTimeout(() => { container.innerHTML = ""; }, 4000);
-}
-
-// ── API helper ────────────────────────────────────────────────────────────────
-
-async function apiFetch(url, opts = {}) {
-  const resp = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  if (resp.status === 204) return null;
-  return resp.json();
-}
+const flash = (msg, type = "success") => modalFlash("cars-modal-flash", msg, type);
 
 // ── Add car ───────────────────────────────────────────────────────────────────
 

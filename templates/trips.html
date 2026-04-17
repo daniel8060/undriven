@@ -157,6 +157,7 @@
 
 {% include '_cars_modal.html' %}
 {% include '_addresses_modal.html' %}
+<script src="{{ url_for('static', filename='js/utils.js') }}?v={{ rev }}"></script>
 <script src="{{ url_for('static', filename='js/cars.js') }}?v={{ rev }}"></script>
 <script src="{{ url_for('static', filename='js/addresses.js') }}?v={{ rev }}"></script>
 </body>

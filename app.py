@@ -199,20 +199,16 @@ def _register_routes(app):
             return redirect(url_for("index", error=f"Unknown car: {car_raw!r}"))
 
         try:
+            uid = current_user.id
             miles = log_trip(date=date, start=start, end=end, mode=mode,
-                             car_name=car_name, notes=notes, cars=cars)
+                             car_name=car_name, notes=notes, cars=cars, user_id=uid)
             if round_trip:
                 log_trip(date=date, start=end, end=start, mode=mode,
-                         car_name=car_name, notes=notes, cars=cars)
+                         car_name=car_name, notes=notes, cars=cars, user_id=uid)
         except MapsError as exc:
             return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 
         return redirect(url_for("index", logged=f"{miles:.1f}", round_trip="1" if round_trip else "0"))
-
-    @app.route("/cars")
-    @login_required
-    def cars():
-        return redirect(url_for("index"))
 
     @app.route("/trips")
     @login_required
@@ -473,16 +469,6 @@ def _register_routes(app):
     @login_required
     def api_summary():
         return jsonify(get_summary())
-
-    @app.route("/api/sync", methods=["POST"])
-    @login_required
-    def api_sync():
-        try:
-            from sync_sheets import run_sync
-            return jsonify(run_sync())
-        except ImportError:
-            return jsonify({"error": "Sheets sync not configured"}), 501
-
 
 if __name__ == "__main__":
     app = create_app()

@@ -37,6 +37,7 @@ def log_trip(
     car_name: str | None,
     notes: str,
     cars: dict | None = None,
+    user_id: int | None = None,
 ) -> float:
     """
     Resolve driving miles via Google Routes API, compute CO2, and persist the trip.
@@ -58,6 +59,7 @@ def log_trip(
         miles=miles,
         co2_kg=co2,
         notes=notes,
+        user_id=user_id,
     )
     print(f"[log] {start} → {end} ({mode}) — {miles:.2f} mi, {co2:.3f} kg CO2")
     return miles
