@@ -76,8 +76,12 @@
       <h1>Trip History</h1>
       <p>all logged trips, most recent first</p>
     </div>
-    <nav>
+    <nav style="display:flex;gap:1.25rem;align-items:center">
+      <button onclick="openCarsModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--accent);cursor:pointer;padding:0">Cars</button>
       <a href="{{ url_for('index') }}" style="font-size:.85rem;color:var(--muted)">← Dashboard</a>
+      <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
+        <button type="submit" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Sign out</button>
+      </form>
     </nav>
   </header>
 
@@ -149,5 +153,8 @@
   </div>
 
 </div>
+
+{% include '_cars_modal.html' %}
+<script src="{{ url_for('static', filename='js/cars.js') }}?v={{ rev }}"></script>
 </body>
 </html>

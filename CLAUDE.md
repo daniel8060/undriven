@@ -52,7 +52,10 @@ HTTP errors from Google should be caught and re-raised as `MapsError` (not `rais
 
 - Schema is managed entirely by Alembic. Never add `db.create_all()` to `create_app()`.
 - Test fixtures call `db.create_all()` explicitly — that is intentional and fine.
-- When a migration gets stamped without running (Pi incident): `flask db stamp <prev_revision>` then `flask db upgrade`.
+- Fresh install: `flask db upgrade` runs `0001_initial_schema` and creates all tables cleanly.
+- **Local db lives at `instance/trips.db`** — Flask resolves relative SQLite URIs to the instance folder. To wipe local state: `rm instance/trips.db && flask db upgrade`.
+- When a migration gets stamped without running: `flask db stamp <prev_revision>` then `flask db upgrade`.
+- When squashing migrations: existing deployments need `flask db stamp head` since their schema is already correct.
 
 ## Deployment (Pi — ulmo)
 
@@ -84,11 +87,9 @@ uv run flask db upgrade # apply pending migrations
 ## Auth
 
 - All routes require login (`@login_required`)
-- Login page: `GET/POST /login`; logout: `POST /logout`
-- No web signup — users created via `flask create-user` CLI only
-- Adding a signup page later is straightforward: new route + copy of login.html + `User.set_password()`
+- Login: `GET/POST /login`; signup: `GET/POST /signup`; logout: `POST /logout`
+- Users can also be created via CLI: `flask create-user <username>`
 
 ## Planned phases (not yet built)
 
-- **Phase 3 — Saved Cars**: per-user car list replacing `config.CARS`; default car; `/api/cars` CRUD
 - **Phase 4 — Saved Addresses**: per-user address shortcuts; chip UI in log form; From/To mutual exclusion

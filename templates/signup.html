@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In — Undriven</title>
+  <title>Sign Up — Undriven</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -25,16 +25,8 @@
       width: 100%;
       max-width: 360px;
     }
-    .login-card h1 {
-      font-size: 1.4rem;
-      font-weight: 600;
-      margin-bottom: .25rem;
-    }
-    .login-card p {
-      font-size: .85rem;
-      color: var(--muted);
-      margin-bottom: 2rem;
-    }
+    .login-card h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: .25rem; }
+    .login-card p  { font-size: .85rem; color: var(--muted); margin-bottom: 2rem; }
     .login-card .form-field { margin-bottom: 1rem; }
     .login-card label {
       display: block;
@@ -83,21 +75,26 @@
       font-size: .85rem;
       color: var(--danger);
     }
+    .login-footer {
+      margin-top: 1.25rem;
+      text-align: center;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    .login-footer a { color: var(--accent); }
   </style>
 </head>
 <body>
 <div class="login-wrap">
   <div class="login-card">
     <h1>Undriven</h1>
-    <p>Sign in to continue</p>
+    <p>Create an account</p>
 
     {% if error %}
       <div class="login-error">{{ error }}</div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('login') }}">
-      <input type="hidden" name="next" value="{{ next }}">
-
+    <form method="POST" action="{{ url_for('signup') }}">
       <div class="form-field">
         <label for="username">Username</label>
         <input type="text" id="username" name="username"
@@ -107,14 +104,20 @@
       <div class="form-field">
         <label for="password">Password</label>
         <input type="password" id="password" name="password"
-               autocomplete="current-password" required>
+               autocomplete="new-password" required>
       </div>
 
-      <button type="submit" class="btn-signin">Sign in</button>
+      <div class="form-field">
+        <label for="password2">Confirm password</label>
+        <input type="password" id="password2" name="password2"
+               autocomplete="new-password" required>
+      </div>
+
+      <button type="submit" class="btn-signin">Create account</button>
     </form>
 
-    <div style="margin-top:1.25rem;text-align:center;font-size:.82rem;color:var(--muted)">
-      No account? <a href="{{ url_for('signup') }}" style="color:var(--accent)">Sign up</a>
+    <div class="login-footer">
+      Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
     </div>
   </div>
 </div>

@@ -25,8 +25,12 @@
       <h1>Undriven</h1>
       <p>car miles replaced by human-powered &amp; transit trips</p>
     </div>
-    <nav>
+    <nav style="display:flex;gap:1.25rem;align-items:center">
+      <button onclick="openCarsModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--accent);cursor:pointer;padding:0">Cars</button>
       <a href="{{ url_for('trips') }}" style="font-size:.85rem;color:var(--muted)">History →</a>
+      <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
+        <button type="submit" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Sign out</button>
+      </form>
     </nav>
   </header>
 
@@ -104,8 +108,8 @@
           <label for="f-car">Car replaced</label>
           <select id="f-car" name="car">
             <option value="">— none —</option>
-            {% for name in config_cars %}
-              <option value="{{ name }}">{{ name }}</option>
+            {% for car in user_cars %}
+              <option value="{{ car.name }}"{% if car.is_default %} selected{% endif %}>{{ car.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -211,8 +215,9 @@
               <td class="mono">{{ "%.1f"|format(car.co2_kg) }}</td>
               <td class="mono">{{ "%.1f"|format(car.co2_kg * 2.20462) }}</td>
               <td class="mono">
-                {% if car.car_name in config_cars %}
-                  {{ "%.1f"|format(car.miles / config_cars[car.car_name].mpg) }}
+                {% set saved = user_cars | selectattr("name", "equalto", car.car_name) | first | default(none) %}
+                {% if saved %}
+                  {{ "%.1f"|format(car.miles / saved.mpg) }}
                 {% else %}
                   —
                 {% endif %}
@@ -229,11 +234,13 @@
 
 </div><!-- /.page -->
 
+{% include '_cars_modal.html' %}
 <script src="{{ url_for('static', filename='js/form.js') }}?v={{ rev }}"></script>
 <script src="{{ url_for('static', filename='js/autocomplete.js') }}?v={{ rev }}"></script>
 <script>
   const weeklyData = {{ summary.over_time | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/chart.js') }}?v={{ rev }}"></script>
+<script src="{{ url_for('static', filename='js/cars.js') }}?v={{ rev }}"></script>
 </body>
 </html>
