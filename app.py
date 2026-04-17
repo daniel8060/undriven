@@ -165,6 +165,7 @@ def _register_routes(app):
         logged     = request.args.get("logged")
         error      = request.args.get("error")
         round_trip = request.args.get("round_trip")
+        total      = request.args.get("total")
         return render_template(
             "index.html",
             summary=summary,
@@ -174,6 +175,7 @@ def _register_routes(app):
             logged=logged,
             error=error,
             round_trip=round_trip,
+            total=total,
             rev=app.config["GIT_REV"],
         )
 
@@ -203,12 +205,13 @@ def _register_routes(app):
             miles = log_trip(date=date, start=start, end=end, mode=mode,
                              car_name=car_name, notes=notes, cars=cars, user_id=uid)
             if round_trip:
-                log_trip(date=date, start=end, end=start, mode=mode,
-                         car_name=car_name, notes=notes, cars=cars, user_id=uid)
+                return_miles = log_trip(date=date, start=end, end=start, mode=mode,
+                                        car_name=car_name, notes=notes, cars=cars, user_id=uid)
         except MapsError as exc:
             return redirect(url_for("index", error=f"Could not resolve route: {exc}"))
 
-        return redirect(url_for("index", logged=f"{miles:.1f}", round_trip="1" if round_trip else "0"))
+        total = miles + return_miles if round_trip else miles
+        return redirect(url_for("index", logged=f"{miles:.1f}", total=f"{total:.1f}", round_trip="1" if round_trip else "0"))
 
     @app.route("/trips")
     @login_required

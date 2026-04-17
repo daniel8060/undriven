@@ -2,7 +2,16 @@ credentials.json
 trips.db
 trips.db-shm
 trips.db-wal
+instance/
 .venv/
 __pycache__/
 *.pyc
 .env
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+backend/.venv/
+backend/__pycache__/
