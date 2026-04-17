@@ -14,6 +14,7 @@ def insert_trip(
     miles: float,
     co2_kg: float,
     notes: str,
+    user_id: int | None = None,
 ) -> Trip:
     trip = Trip(
         date=date,
@@ -24,6 +25,7 @@ def insert_trip(
         miles=miles,
         co2_kg=co2_kg,
         notes=notes or "",
+        user_id=user_id,
     )
     db.session.add(trip)
     db.session.commit()

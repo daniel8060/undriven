@@ -18,24 +18,7 @@ document.getElementById("addrModalClose").addEventListener("click", closeAddress
 addrBackdrop.addEventListener("click", (e) => { if (e.target === addrBackdrop) closeAddressesModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAddressesModal(); });
 
-// ── Flash ─────────────────────────────────────────────────────────────────────
-
-function addrFlash(msg, type = "success") {
-  const container = document.getElementById("addr-modal-flash");
-  container.innerHTML = `<div class="modal-flash ${type}">${msg}</div>`;
-  setTimeout(() => { container.innerHTML = ""; }, 4000);
-}
-
-// ── API helper ────────────────────────────────────────────────────────────────
-
-async function addrFetch(url, opts = {}) {
-  const resp = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  if (resp.status === 204) return null;
-  return resp.json();
-}
+const addrFlash = (msg, type = "success") => modalFlash("addr-modal-flash", msg, type);
 
 // ── Chips (log form quick-fill) ───────────────────────────────────────────────
 
@@ -126,7 +109,7 @@ document.getElementById("add-addr-form").addEventListener("submit", async (e) =>
   const label   = document.getElementById("new-addr-label").value.trim();
   const address = document.getElementById("new-addr-address").value.trim();
 
-  const data = await addrFetch("/api/addresses", {
+  const data = await apiFetch("/api/addresses", {
     method: "POST",
     body: JSON.stringify({ label, address }),
   });
@@ -192,7 +175,7 @@ function bindAddrRowEvents(tr) {
 async function handleAddrDelete(tr) {
   const label = tr.querySelector(".addr-label")?.textContent;
   if (!confirm(`Delete "${label}"?`)) return;
-  const data = await addrFetch(`/api/addresses/${tr.dataset.id}`, { method: "DELETE" });
+  const data = await apiFetch(`/api/addresses/${tr.dataset.id}`, { method: "DELETE" });
   if (data?.error) { addrFlash(data.error, "error"); return; }
   tr.remove();
   updateAddrEmptyState();
@@ -215,7 +198,7 @@ async function handleAddrSave(tr) {
   const label   = tr.querySelector("#edit-addr-label").value.trim();
   const address = tr.querySelector("#edit-addr-address").value.trim();
 
-  const data = await addrFetch(`/api/addresses/${tr.dataset.id}`, {
+  const data = await apiFetch(`/api/addresses/${tr.dataset.id}`, {
     method: "PATCH",
     body: JSON.stringify({ label, address }),
   });
@@ -285,7 +268,7 @@ function bindAddrDragEvents(tr) {
 
 async function persistAddrOrder() {
   const ids = [...document.querySelectorAll("#addr-tbody tr")].map(tr => parseInt(tr.dataset.id));
-  await addrFetch("/api/addresses/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+  await apiFetch("/api/addresses/reorder", { method: "POST", body: JSON.stringify({ ids }) });
   syncAddressChips();
 }
 
