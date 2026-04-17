@@ -26,7 +26,7 @@
       <p>car miles replaced by human-powered &amp; transit trips</p>
     </div>
     <nav style="display:flex;gap:1.25rem;align-items:center">
-      <button onclick="openCarsModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Cars</button>
+      <button onclick="openCarsModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--accent);cursor:pointer;padding:0">Cars</button>
       <a href="{{ url_for('trips') }}" style="font-size:.85rem;color:var(--muted)">History →</a>
       <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
         <button type="submit" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--muted);cursor:pointer;padding:0">Sign out</button>
