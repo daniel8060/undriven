@@ -26,6 +26,7 @@
       <p>car miles replaced by human-powered &amp; transit trips</p>
     </div>
     <nav style="display:flex;gap:1.25rem;align-items:center">
+      <button onclick="openAddressesModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--accent);cursor:pointer;padding:0">Addresses</button>
       <button onclick="openCarsModal()" style="background:none;border:none;font-family:var(--sans);font-size:.85rem;color:var(--accent);cursor:pointer;padding:0">Cars</button>
       <a href="{{ url_for('trips') }}" style="font-size:.85rem;color:var(--muted)">History →</a>
       <form method="POST" action="{{ url_for('logout') }}" style="margin:0">
@@ -62,6 +63,9 @@
           <span>&#x2315;</span><span id="locate-label">Use my location</span>
         </button>
       </div>
+
+      <!-- Address chips (quick-fill From / To from saved addresses) -->
+      <div class="addr-chips" id="addr-chips"></div>
 
       <!-- Row 1: From / To -->
       <div class="route-row">
@@ -235,6 +239,7 @@
 </div><!-- /.page -->
 
 {% include '_cars_modal.html' %}
+{% include '_addresses_modal.html' %}
 <script src="{{ url_for('static', filename='js/form.js') }}?v={{ rev }}"></script>
 <script src="{{ url_for('static', filename='js/autocomplete.js') }}?v={{ rev }}"></script>
 <script>
@@ -242,5 +247,6 @@
 </script>
 <script src="{{ url_for('static', filename='js/chart.js') }}?v={{ rev }}"></script>
 <script src="{{ url_for('static', filename='js/cars.js') }}?v={{ rev }}"></script>
+<script src="{{ url_for('static', filename='js/addresses.js') }}?v={{ rev }}"></script>
 </body>
 </html>

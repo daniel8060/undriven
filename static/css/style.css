@@ -558,6 +558,44 @@ td.mono { font-family: var(--mono); font-size: .84rem; }
 .modal-flash.success { background: var(--accent-lt); color: var(--accent); border: 1px solid #b2dfc8; }
 .modal-flash.error   { background: var(--danger-lt); color: var(--danger); border: 1px solid #f5c6c2; }
 
+/* ── Address chips ── */
+.addr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-bottom: .6rem;
+  min-height: 0;
+}
+
+.addr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .74rem;
+  font-weight: 500;
+  padding: .18rem .55rem;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  user-select: none;
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+.addr-chip:hover               { border-color: var(--accent); color: var(--accent); }
+.addr-chip.chip-from           { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+.addr-chip.chip-to             { background: #daeaf7; border-color: var(--mode-train); color: var(--mode-train); }
+
+.addr-chip .chip-badge {
+  font-size: .66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  opacity: .8;
+}
+
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .meta-row { grid-template-columns: 1fr 1fr; }

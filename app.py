@@ -5,7 +5,7 @@ from flask_login import LoginManager, current_user, login_required, login_user, 
 from flask_migrate import Migrate
 
 import config
-from models import SavedCar, User, db
+from models import SavedAddress, SavedCar, User, db
 
 MODES = ["bike", "walk", "train", "bus", "scooter", "other"]
 
@@ -169,6 +169,7 @@ def _register_routes(app):
             "index.html",
             summary=summary,
             user_cars=current_user.cars,
+            user_addresses=current_user.addresses,
             modes=MODES,
             logged=logged,
             error=error,
@@ -219,7 +220,9 @@ def _register_routes(app):
         all_trips = get_all_trips()
         deleted   = request.args.get("deleted")
         return render_template("trips.html", trips=all_trips, deleted=deleted,
-                               user_cars=current_user.cars, rev=app.config["GIT_REV"])
+                               user_cars=current_user.cars,
+                               user_addresses=current_user.addresses,
+                               rev=app.config["GIT_REV"])
 
     @app.route("/trips/<int:trip_id>/delete", methods=["POST"])
     @login_required
@@ -311,6 +314,64 @@ def _register_routes(app):
         car.is_default = True
         db.session.commit()
         return jsonify({"id": car.id, "is_default": True})
+
+    # ── Addresses API ────────────────────────────────────────────────────────
+
+    @app.route("/api/addresses", methods=["GET"])
+    @login_required
+    def api_addresses_list():
+        return jsonify([
+            {"id": a.id, "label": a.label, "address": a.address}
+            for a in current_user.addresses
+        ])
+
+    @app.route("/api/addresses", methods=["POST"])
+    @login_required
+    def api_addresses_create():
+        data    = request.get_json(force=True)
+        label   = (data.get("label")   or "").strip()
+        address = (data.get("address") or "").strip()
+        if not label or not address:
+            return jsonify({"error": "label and address are required"}), 400
+        if SavedAddress.query.filter_by(user_id=current_user.id, label=label).first():
+            return jsonify({"error": f"label '{label}' already exists"}), 409
+        next_order = SavedAddress.query.filter_by(user_id=current_user.id).count()
+        addr = SavedAddress(user_id=current_user.id, label=label,
+                            address=address, sort_order=next_order)
+        db.session.add(addr)
+        db.session.commit()
+        return jsonify({"id": addr.id, "label": addr.label, "address": addr.address}), 201
+
+    @app.route("/api/addresses/<int:addr_id>", methods=["PATCH"])
+    @login_required
+    def api_addresses_update(addr_id):
+        addr = SavedAddress.query.filter_by(id=addr_id, user_id=current_user.id).first_or_404()
+        data = request.get_json(force=True)
+        if "label" in data:
+            addr.label = data["label"].strip()
+        if "address" in data:
+            addr.address = data["address"].strip()
+        db.session.commit()
+        return jsonify({"id": addr.id, "label": addr.label, "address": addr.address})
+
+    @app.route("/api/addresses/<int:addr_id>", methods=["DELETE"])
+    @login_required
+    def api_addresses_delete(addr_id):
+        addr = SavedAddress.query.filter_by(id=addr_id, user_id=current_user.id).first_or_404()
+        db.session.delete(addr)
+        db.session.commit()
+        return "", 204
+
+    @app.route("/api/addresses/reorder", methods=["POST"])
+    @login_required
+    def api_addresses_reorder():
+        ids = request.get_json(force=True).get("ids", [])
+        addrs_by_id = {a.id: a for a in current_user.addresses}
+        for order, addr_id in enumerate(ids):
+            if addr_id in addrs_by_id:
+                addrs_by_id[addr_id].sort_order = order
+        db.session.commit()
+        return "", 204
 
     # ── Other API ─────────────────────────────────────────────────────────────
 
