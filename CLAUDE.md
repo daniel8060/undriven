@@ -35,6 +35,7 @@ Runs on a Raspberry Pi (ulmo, 10.0.0.80) behind nginx + uvicorn.
 | `frontend/src/` | React SPA source (pages, components, context, hooks) |
 | `frontend/src/styles/index.css` | All styles; CSS variables (--surface, --accent, etc.) |
 | `.claude/agents/` | Project-level Claude agents: deploy.md, test.md |
+| `~/.claude/agents/ulmo.md` | System-level agent: sysadmin for ulmo |
 
 ## Environment variables
 
@@ -63,35 +64,10 @@ HTTP errors from Google should be caught and re-raised as `MapsError` (not `rais
 - Migration chain: `0001_initial_schema` → `0002_add_sort_order_to_saved_cars` → `0003_add_trip_segments`
 - Fresh install: `cd backend && uv run alembic -c migrations/alembic.ini upgrade head`
 - **Local db lives at `instance/trips.db`**. To wipe local state: `rm instance/trips.db && cd backend && uv run alembic -c migrations/alembic.ini upgrade head`
-- When deploying to Pi where schema already exists: `alembic stamp head` then future upgrades work normally.
 
 ## Deployment (Pi — ulmo)
 
-```bash
-# Deploy update (or use the 'deploy' Claude agent)
-# 1. Build frontend locally
-cd frontend && npm run build
-
-# 2. Copy dist to Pi
-scp -r frontend/dist/* ulmo:/home/daniel/projects/undriven/frontend/dist/
-
-# 3. Pull code, sync deps, migrate, restart
-ssh ulmo "cd /home/daniel/projects/undriven/backend && git -C .. pull && ~/.local/bin/uv sync && ~/.local/bin/uv run alembic -c migrations/alembic.ini upgrade head && sudo systemctl restart undriven"
-
-# Create user
-ssh ulmo "cd /home/daniel/projects/undriven/backend && ~/.local/bin/uv run python cli.py create-user <username>"
-
-# Logs
-ssh ulmo "journalctl -u undriven -f"
-```
-
-- No Node.js on Pi — React is built locally, `dist/` deployed via scp
-- nginx: `/api/` proxied to uvicorn:8000, everything else served from `frontend/dist/` with `try_files $uri /index.html`
-- systemd unit: uvicorn (`uvicorn backend.main:app --host 127.0.0.1 --port 8000`)
-- `uv` lives at `~/.local/bin/uv` on the Pi
-- nginx config: `/etc/nginx/sites-available/undriven`
-- App path: `/home/daniel/projects/undriven`
-- mDNS: `http://undriven.local`
+- have the deploy agent handle it
 
 ## Running locally
 
@@ -115,6 +91,11 @@ cd backend && uv run alembic -c migrations/alembic.ini upgrade head
 - `GET /api/me` — check auth state; `POST /api/login`, `/api/signup`, `/api/logout`
 - All `/api/*` routes require auth via `get_current_user` dependency
 - Users created via CLI: `python backend/cli.py create-user <username>`, or via `/signup`
+
+## Agent Coordination
+
+- ALWAYS update agent .md files if relevant changes are made. eg deployment flow change -> update `.claude/agents/deploy.md`
+- For sysadmin tasks on ulmo, use the `ulmo` agent and keep `~/.claude/agents/ulmo.md` updated when Pi-side details change.
 
 ## Trip Segments
 
