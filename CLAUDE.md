@@ -62,8 +62,8 @@ HTTP errors from Google should be caught and re-raised as `MapsError` (not `rais
 - Schema is managed entirely by Alembic (standalone). Never add `Base.metadata.create_all()` in production.
 - Test fixtures call `Base.metadata.create_all()` explicitly — that is intentional and fine.
 - Migration chain: `0001_initial_schema` → `0002_add_sort_order_to_saved_cars` → `0003_add_trip_segments`
-- Fresh install: `cd backend && uv run alembic -c migrations/alembic.ini upgrade head`
-- **Local db lives at `instance/trips.db`**. To wipe local state: `rm instance/trips.db && cd backend && uv run alembic -c migrations/alembic.ini upgrade head`
+- Fresh install: `uv run alembic -c backend/migrations/alembic.ini upgrade head`
+- **Local db lives at `instance/trips.db`**. To wipe local state: `rm instance/trips.db && uv run alembic -c backend/migrations/alembic.ini upgrade head`
 
 ## Deployment (Pi — ulmo)
 
@@ -71,18 +71,20 @@ HTTP errors from Google should be caught and re-raised as `MapsError` (not `rais
 
 ## Running locally
 
+All Python commands run from repo root (pyproject.toml lives there).
+
 ```bash
 # Backend
-cd backend && uv run uvicorn backend.main:app --reload --port 8000  # API on :8000
+uv run uvicorn backend.main:app --reload --port 8000   # API on :8000
 
 # Frontend (separate terminal)
 cd frontend && npm run dev   # Vite dev server on :5173, proxies /api → :8000
 
 # Tests
-cd backend && uv run pytest -v  # 44 tests
+uv run pytest -q   # 44 tests
 
 # Migrations
-cd backend && uv run alembic -c migrations/alembic.ini upgrade head
+uv run alembic -c backend/migrations/alembic.ini upgrade head
 ```
 
 ## Auth
