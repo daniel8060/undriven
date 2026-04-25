@@ -146,6 +146,32 @@ def test_insert_trip_with_segments(session, user):
     assert segs[1].mode == "train"
 
 
+def test_summary_excludes_car_segments_from_miles_saved(session, user):
+    segments = [
+        {"start_loc": "Home", "end_loc": "Station", "mode": "car", "miles": 2.0},
+        {"start_loc": "Station", "end_loc": "Office", "mode": "train", "miles": 8.0},
+    ]
+    insert_trip(
+        session, "2026-01-15", "Home", "Office", "car", None, 10.0, 0.0, "", user.id,
+        segments=segments,
+    )
+    summary = get_summary(session, user.id)
+    # Only the 8mi train leg counts toward miles saved
+    assert summary["total_miles"] == pytest.approx(8.0)
+    modes = {r["mode"]: r["miles"] for r in summary["by_mode"]}
+    assert modes == {"train": pytest.approx(8.0)}
+
+
+def test_summary_excludes_single_car_trips_from_miles_saved(session, user):
+    insert_trip(session, "2026-01-15", "Home", "Mall", "car", "4Runner", 10.0, 0.0, "", user.id)
+    insert_trip(session, "2026-01-16", "Home", "Park", "bike", None, 4.0, 0.0, "", user.id)
+    summary = get_summary(session, user.id)
+    assert summary["total_miles"] == pytest.approx(4.0)
+    assert summary["total_trips"] == 2
+    modes = {r["mode"] for r in summary["by_mode"]}
+    assert modes == {"bike"}
+
+
 def test_delete_trip_cascades_to_segments(session, user):
     segments = [
         {"start_loc": "A", "end_loc": "B", "mode": "bike", "miles": 3.0},

@@ -8,7 +8,7 @@ from backend.models import User
 from backend.schemas import SummaryResponse, TripLogRequest, TripResponse
 from backend.sync import log_trip, parse_car
 
-MODES = ["bike", "walk", "train", "bus", "scooter", "other"]
+MODES = ["bike", "walk", "train", "bus", "scooter", "car", "other"]
 
 router = APIRouter(prefix="/api", tags=["trips"])
 
@@ -51,6 +51,10 @@ def create_trip(
         raise HTTPException(status_code=400, detail="Date, start, end, and mode are required")
     if mode not in MODES:
         raise HTTPException(status_code=400, detail=f"Unknown mode: {mode!r}")
+    if segments:
+        for s in segments:
+            if s["mode"] not in MODES:
+                raise HTTPException(status_code=400, detail=f"Unknown segment mode: {s['mode']!r}")
 
     from gmaps import MapsError
     try:

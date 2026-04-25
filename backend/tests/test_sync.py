@@ -58,6 +58,36 @@ def test_log_trip_with_car_calculates_co2(session, user):
     assert session.query(Trip).first().co2_kg == pytest.approx(8.887, rel=1e-4)
 
 
+def test_log_trip_car_mode_zero_co2(session, user):
+    """A pure car trip saves nothing — co2 credit should be 0."""
+    with patch("backend.sync.driving_miles", return_value=10.0):
+        log_trip(
+            session=session, date="2026-01-15", start="Home", end="Mall",
+            mode="car", car_name="4Runner", notes="", user_id=user.id,
+            cars=CARS,
+        )
+    assert session.query(Trip).first().co2_kg == 0.0
+
+
+def test_log_trip_multi_segment_car_leg_excluded_from_co2(session, user):
+    """Car leg miles should not earn CO2 credit."""
+    segments = [
+        {"start": "Home", "end": "Station", "mode": "car"},
+        {"start": "Station", "end": "Office", "mode": "train"},
+    ]
+    with patch("backend.sync.driving_miles", side_effect=[2.0, 16.0]):
+        log_trip(
+            session=session, date="2026-01-15", start="Home", end="Office",
+            mode="car", car_name="4Runner", notes="", user_id=user.id,
+            cars=CARS, segments=segments,
+        )
+    trip = session.query(Trip).first()
+    assert trip.miles == pytest.approx(18.0)
+    # CO2 should be computed on 16 train miles only (4Runner, 18 mpg)
+    expected = co2_for_car("4Runner", 16.0, CARS)
+    assert trip.co2_kg == pytest.approx(expected, rel=1e-4)
+
+
 def test_log_trip_multi_segment(session, user):
     segments = [
         {"start": "Home", "end": "Station", "mode": "bike"},

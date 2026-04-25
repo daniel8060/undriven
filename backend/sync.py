@@ -51,9 +51,12 @@ def log_trip(
         # Multi-segment trip: resolve each segment individually
         resolved_segments = []
         total_miles = 0.0
+        non_car_miles = 0.0
         for seg in segments:
             seg_miles = driving_miles(seg["start"], seg["end"])
             total_miles += seg_miles
+            if seg["mode"] != "car":
+                non_car_miles += seg_miles
             resolved_segments.append({
                 "start_loc": seg["start"],
                 "end_loc": seg["end"],
@@ -64,7 +67,7 @@ def log_trip(
         overall_start = segments[0]["start"]
         overall_end = segments[-1]["end"]
         overall_mode = segments[0]["mode"]
-        co2 = co2_for_car(car_name, total_miles, cars) if car_name and car_name in cars else 0.0
+        co2 = co2_for_car(car_name, non_car_miles, cars) if car_name and car_name in cars else 0.0
 
         insert_trip(
             session=session,
@@ -84,7 +87,8 @@ def log_trip(
     else:
         # Single-segment or no segments: existing behavior
         miles = driving_miles(start, end)
-        co2 = co2_for_car(car_name, miles, cars) if car_name and car_name in cars else 0.0
+        co2_miles = 0.0 if mode == "car" else miles
+        co2 = co2_for_car(car_name, co2_miles, cars) if car_name and car_name in cars else 0.0
 
         insert_trip(
             session=session,
