@@ -1,125 +1,107 @@
 # Undriven
 
-Track car miles replaced by non-car trips — bike, walk, train, bus, etc.
+Track car miles replaced by non-car trips — bike, walk, train, bus, etc. Also CO₂ saved versus a chosen car. Personal multi-user app with a Google Maps–powered logging form.
 
-Every time you open the dashboard, Undriven checks your Google Sheet for new rows,
-calculates the equivalent driving distance via OpenRouteService, writes the miles back
-to the sheet, and stores everything locally in SQLite.
+## Stack
 
----
+- **Backend** — FastAPI + uvicorn, SQLAlchemy 2.0, Alembic, JWT auth in httpOnly cookies (`backend/`)
+- **Frontend** — React 19 + Vite + TypeScript SPA (`frontend/`)
+- **DB** — SQLite (`instance/trips.db`)
+- **Maps** — Google Maps Platform: Places API (New) + Routes API + Geocoding API
+- **Deploy** — Raspberry Pi behind nginx; uvicorn on `:8001`, frontend served as static build from `frontend/dist/`
 
 ## Setup
 
-### 1. Install dependencies
+### 1. Install backend deps
 
 ```bash
-# Install uv if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install project dependencies
+curl -LsSf https://astral.sh/uv/install.sh | sh   # if you don't have uv
 uv sync
 ```
 
-### 2. Get an ORS API key
-
-1. Sign up at [openrouteservice.org](https://openrouteservice.org)
-2. Generate a free API key from your dashboard
-3. Paste it into `config.py` as `ORS_API_KEY`
-
-### 3. Set up your Google Sheet
-
-Create a sheet with this column layout (row 1 is the header, data starts at row 2):
-
-| A: date    | B: start          | C: end            | D: mode | E: cars            | F: miles | G: notes        |
-|------------|-------------------|-------------------|---------|--------------------|----------|-----------------|
-| 2024-03-15 | Portland, OR      | Seattle, WA       | train   | 4Runner:1          |          | weekend trip    |
-| 2024-03-16 | Capitol Hill, Seattle | Pike Place Market | walk | Corolla:2        |          |                 |
-
-- **date** — any parseable date string, e.g. `2024-03-15`
-- **start / end** — place names or addresses that ORS can geocode
-- **mode** — free text: `bike`, `walk`, `train`, `bus`, `scooter`, etc.
-- **cars** — comma-separated `CarName:occupants` pairs, e.g. `4Runner:1, Corolla:2`. Must match names in `config.py`. Leave blank if tracking the trip without a specific car.
-- **miles** — leave blank; Undriven fills this in automatically
-- **notes** — anything you want
-
-### 4. Create a Google service account
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project (or use an existing one)
-3. Enable the **Google Sheets API** and **Google Drive API**
-4. Go to **IAM & Admin → Service Accounts** and create a service account
-5. Create a JSON key for the service account and download it
-6. Rename the file to `credentials.json` and place it in this directory
-7. Share your Google Sheet with the service account's email address (Editor access)
-
-### 5. Edit config.py
-
-```python
-ORS_API_KEY = "your-key-here"
-SHEET_ID    = "the-long-id-from-your-sheet-url"
-SHEET_TAB   = "Sheet1"  # name of the tab
-```
-
-The sheet ID is the part of the URL between `/d/` and `/edit`:
-`https://docs.google.com/spreadsheets/d/THIS_PART_HERE/edit`
-
-### 6. Run
+### 2. Frontend deps
 
 ```bash
-uv run python app.py
+cd frontend && npm install
 ```
 
-Then open [http://localhost:5000](http://localhost:5000).
+### 3. `.env` at repo root
 
----
+```ini
+GOOGLE_MAPS_API_KEY=your-key-here
+SECRET_KEY=long-random-string-for-jwt-signing
+# DATABASE_URL=sqlite:///instance/trips.db   # optional; this is the default
+```
 
-## How the sync works
+`GOOGLE_MAPS_API_KEY` and `SECRET_KEY` are required — the app hard-fails on startup without them. Generate a key in [Google Cloud Console](https://console.cloud.google.com) and enable Places API (New), Routes API, and Geocoding API.
 
-On every page load (`GET /`), Undriven:
+### 4. Initialize the database
 
-1. Reads all rows from the sheet where column F (miles) is blank
-2. Skips rows already in the local SQLite database (`trips.db`)
-3. For each new row: geocodes start + end via ORS, fetches the driving distance
-4. Writes the miles back to column F of the sheet
-5. Stores the trip and per-car CO₂ data in SQLite
-6. Renders the dashboard from SQLite (no further API calls)
-
-You can also trigger a sync manually without a page reload:
 ```bash
-curl -X POST http://localhost:5000/api/sync
+uv run alembic -c backend/migrations/alembic.ini upgrade head
 ```
 
-Sync progress is printed to stdout — useful for debugging.
+### 5. Create a user
 
----
-
-## Adding a new car
-
-Edit `CARS` in `config.py`:
-
-```python
-CARS = {
-    "4Runner": {"mpg": 18.0, "fuel_type": "gasoline"},
-    "Corolla": {"mpg": 32.0, "fuel_type": "gasoline"},
-    "Prius":   {"mpg": 52.0, "fuel_type": "hybrid"},   # ← add here
-}
+```bash
+uv run python backend/cli.py create-user <username>
 ```
 
-Supported `fuel_type` values: `gasoline`, `diesel`, `electric`, `hybrid`.
+(Or use the in-app `/signup` route once the server is running.)
 
----
+## Running locally
 
-## Troubleshooting
+Two terminals:
 
-**Miles stop filling in**
-- Check the ORS API key in `config.py` — free tier has rate limits
-- Make sure start/end place names are specific enough to geocode (city + state works well)
-- Run with `uv run python app.py` and watch stdout for per-row error messages
+```bash
+# Terminal 1 — API
+uv run uvicorn backend.main:app --reload --port 8000
 
-**Sheet not found**
-- Confirm the sheet ID in `config.py` matches your URL
-- Confirm the service account email has Editor access to the sheet
-- Confirm `credentials.json` is in the project root
+# Terminal 2 — frontend dev server
+cd frontend && npm run dev
+```
 
-**"Unknown car name" warning in stdout**
-- The car name in column E must exactly match a key in `CARS` (case-sensitive)
+Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api/*` to uvicorn on `:8000`.
+
+## Tests
+
+```bash
+uv run pytest -q
+```
+
+## Project layout
+
+```
+undriven/
+├── pyproject.toml
+├── uv.lock
+├── .env
+├── instance/trips.db
+├── backend/             # FastAPI package
+│   ├── main.py          # app entry + router includes
+│   ├── auth.py          # JWT + get_current_user dependency
+│   ├── config.py        # CARS, GEOCODE_FOCUS, CO2_KG_PER_GALLON
+│   ├── gmaps.py         # Google Maps API wrappers
+│   ├── database.py      # engine, SessionLocal, get_db()
+│   ├── models.py        # SQLAlchemy models
+│   ├── schemas.py       # Pydantic request/response
+│   ├── db.py            # query helpers
+│   ├── sync.py          # log_trip() — routing + DB insert
+│   ├── cli.py           # create-user, seed-cars
+│   ├── migrations/      # Alembic
+│   ├── routers/         # auth, trips, cars, addresses, maps
+│   └── tests/           # pytest suite
+└── frontend/            # React 19 + Vite SPA
+    ├── package.json
+    └── src/
+```
+
+## Deployment
+
+The app is deployed on a Raspberry Pi (ulmo). Deploys are driven by the `deploy` Claude agent — see `.claude/agents/deploy.md` for the canonical steps. High level:
+
+1. Build frontend locally (`cd frontend && npm run build`)
+2. scp `frontend/dist/` to the Pi
+3. `git pull` on the Pi
+4. `uv sync` and `alembic upgrade head` on the Pi
+5. Restart the `undriven` systemd unit; nginx proxies `/api/` to uvicorn on `:8001` and serves the static frontend
