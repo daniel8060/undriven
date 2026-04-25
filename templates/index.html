@@ -40,7 +40,7 @@
     <div class="flash success">
       {% if round_trip == "1" %}
         Round trip logged — <strong>{{ logged }} mi</strong> each way
-        (<strong>{{ "%.1f"|format(logged|float * 2) }} mi</strong> total).
+        (<strong>{{ total }} mi</strong> total).
       {% else %}
         Trip logged — <strong>{{ logged }} mi</strong> replaced.
       {% endif %}

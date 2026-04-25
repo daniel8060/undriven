@@ -1,46 +1,50 @@
 # Undriven — Claude Context
 
-Personal Flask app for tracking car miles replaced by non-car trips (bike, walk, train, etc.).
-Runs on a Raspberry Pi (ulmo, 10.0.0.80) behind nginx + gunicorn.
+Personal app for tracking car miles replaced by non-car trips (bike, walk, train, etc.).
+Runs on a Raspberry Pi (ulmo, 10.0.0.80) behind nginx + uvicorn.
 
 ## Stack
 
-- **Flask 3.0** — `create_app()` factory in `app.py`
-- **SQLAlchemy 2.0** via Flask-SQLAlchemy; models in `models.py`
-- **Flask-Migrate / Alembic** — all schema changes go through migrations, never `db.create_all()` in production
-- **Flask-Login + bcrypt** — auth; users created via `flask create-user <username>` or `/signup`
+- **FastAPI** — backend API in `backend/main.py`
+- **React 19 + Vite + TypeScript** — SPA frontend in `frontend/`
+- **SQLAlchemy 2.0** (plain declarative base); models in `backend/models.py`
+- **Alembic** (standalone) — all schema changes go through migrations
+- **JWT auth** in httpOnly cookies (python-jose + bcrypt)
 - **Google Maps Platform** — Places API (New) + Routes API + Geocoding API (see `gmaps.py`)
-- **uv** for dependency management (`pyproject.toml`)
-- **pytest** test suite in `tests/` (39 tests)
+- **uv** for backend dependency management (`backend/pyproject.toml`)
+- **npm** for frontend (`frontend/package.json`)
+- **pytest** test suite in `backend/tests/` (44 tests)
 
 ## Key files
 
 | File | Purpose |
 |---|---|
-| `app.py` | App factory, all routes, CLI commands |
-| `models.py` | SQLAlchemy models: User, Trip, SavedAddress, SavedCar |
-| `db.py` | Query helpers (get_summary, get_all_trips, etc.) |
+| `backend/main.py` | FastAPI app, CORS, router includes |
+| `backend/models.py` | SQLAlchemy models: User, Trip, TripSegment, SavedAddress, SavedCar |
+| `backend/database.py` | Engine, SessionLocal, `get_db()` dependency |
+| `backend/auth.py` | JWT create/decode, `get_current_user` dependency, password hashing |
+| `backend/schemas.py` | Pydantic request/response models |
+| `backend/db.py` | Query helpers (get_summary, get_all_trips, insert_trip, etc.) |
+| `backend/sync.py` | log_trip() — orchestrates routing + DB insert (supports segments) |
+| `backend/cli.py` | CLI commands: create-user, seed-cars |
+| `backend/routers/` | auth_router, trips, cars, addresses, maps |
+| `backend/migrations/` | Standalone Alembic migrations (0001–0003) |
+| `backend/tests/` | pytest suite: test_auth, test_db, test_gmaps, test_sync |
 | `gmaps.py` | Google Maps API calls (autocomplete, geocode, driving_miles) |
-| `sync.py` | log_trip() — orchestrates routing + DB insert |
-| `config.py` | Env-var loading; CARS, GEOCODE_FOCUS, CO2_KG_PER_GALLON as Python dicts |
-| `static/css/style.css` | All styles; uses CSS variables (--surface, --accent, etc.) |
-| `static/js/utils.js` | Shared apiFetch() and modalFlash() used by modal scripts |
-| `static/js/cars.js` | Cars modal: CRUD, drag-to-reorder, sync car dropdown |
-| `static/js/addresses.js` | Addresses modal: CRUD, drag-to-reorder, chip quick-fill logic |
-| `static/js/form.js` | Log form: round-trip toggle, swap button, spinner |
-| `static/js/autocomplete.js` | Address autocomplete via Google Places API |
-| `static/js/chart.js` | Weekly stacked bar chart via Chart.js |
-| `templates/` | Jinja2 templates; static assets use `?v={{ rev }}` cache-busting |
+| `config.py` | Env-var loading; CARS, GEOCODE_FOCUS, CO2_KG_PER_GALLON |
+| `frontend/src/` | React SPA source (pages, components, context, hooks) |
+| `frontend/src/styles/index.css` | All styles; CSS variables (--surface, --accent, etc.) |
 | `.claude/agents/` | Project-level Claude agents: deploy.md, test.md |
+| `~/.claude/agents/ulmo.md` | System-level agent: sysadmin for ulmo |
 
 ## Environment variables
 
 Loaded from `.env` at project root (not committed). Required:
 - `GOOGLE_MAPS_API_KEY` — hard fail if missing (no fallback)
-- `SECRET_KEY` — Flask session key
+- `SECRET_KEY` — JWT signing key
 
 Optional:
-- `DATABASE_URL` — defaults to `sqlite:///trips.db`
+- `DATABASE_URL` — defaults to `sqlite:///instance/trips.db`
 
 `CARS`, `GEOCODE_FOCUS`, `CO2_KG_PER_GALLON` stay as Python config in `config.py`.
 
@@ -55,42 +59,49 @@ HTTP errors from Google should be caught and re-raised as `MapsError` (not `rais
 
 ## Database / migrations
 
-- Schema is managed entirely by Alembic. Never add `db.create_all()` to `create_app()`.
-- Test fixtures call `db.create_all()` explicitly — that is intentional and fine.
-- Fresh install: `flask db upgrade` runs `0001_initial_schema` and creates all tables cleanly.
-- **Local db lives at `instance/trips.db`** — Flask resolves relative SQLite URIs to the instance folder. To wipe local state: `rm instance/trips.db && flask db upgrade`.
-- When a migration gets stamped without running: `flask db stamp <prev_revision>` then `flask db upgrade`.
-- When squashing migrations: existing deployments need `flask db stamp head` since their schema is already correct.
+- Schema is managed entirely by Alembic (standalone). Never add `Base.metadata.create_all()` in production.
+- Test fixtures call `Base.metadata.create_all()` explicitly — that is intentional and fine.
+- Migration chain: `0001_initial_schema` → `0002_add_sort_order_to_saved_cars` → `0003_add_trip_segments`
+- Fresh install: `uv run alembic -c backend/migrations/alembic.ini upgrade head`
+- **Local db lives at `instance/trips.db`**. To wipe local state: `rm instance/trips.db && uv run alembic -c backend/migrations/alembic.ini upgrade head`
 
 ## Deployment (Pi — ulmo)
 
-```bash
-# Deploy update (or use the 'deploy' Claude agent)
-ssh ulmo "cd /home/daniel/projects/undriven && git pull && ~/.local/bin/uv sync && ~/.local/bin/uv run flask db upgrade && sudo systemctl restart undriven"
-
-# Create user
-ssh ulmo "cd /home/daniel/projects/undriven && ~/.local/bin/uv run flask create-user <username>"
-
-# Logs
-ssh ulmo "journalctl -u undriven -f"
-# or: /var/log/undriven/access.log, /var/log/undriven/error.log
-```
-
-- `uv` lives at `~/.local/bin/uv` on the Pi (not in PATH by default for ssh commands)
-- nginx config: `/etc/nginx/sites-available/undriven`
-- App path: `/home/daniel/projects/undriven`
-- mDNS: `http://undriven.local`
+- have the deploy agent handle it
 
 ## Running locally
 
+All Python commands run from repo root (pyproject.toml lives there).
+
 ```bash
-uv run flask run        # dev server (local user: daniel_mac)
-uv run pytest -v        # test suite (39 tests)
-uv run flask db upgrade # apply pending migrations
+# Backend
+uv run uvicorn backend.main:app --reload --port 8000   # API on :8000
+
+# Frontend (separate terminal)
+cd frontend && npm run dev   # Vite dev server on :5173, proxies /api → :8000
+
+# Tests
+uv run pytest -q   # 44 tests
+
+# Migrations
+uv run alembic -c backend/migrations/alembic.ini upgrade head
 ```
 
 ## Auth
 
-- All routes require login (`@login_required`)
-- Login: `GET/POST /login`; signup: `GET/POST /signup`; logout: `POST /logout`
-- Users created via CLI: `flask create-user <username>`, or via `/signup`
+- JWT in httpOnly cookie (`access_token`), SameSite=Lax, 30-day expiry
+- `GET /api/me` — check auth state; `POST /api/login`, `/api/signup`, `/api/logout`
+- All `/api/*` routes require auth via `get_current_user` dependency
+- Users created via CLI: `python backend/cli.py create-user <username>`, or via `/signup`
+
+## Agent Coordination
+
+- ALWAYS update agent .md files if relevant changes are made. eg deployment flow change -> update `.claude/agents/deploy.md`
+- For sysadmin tasks on ulmo, use the `ulmo` agent and keep `~/.claude/agents/ulmo.md` updated when Pi-side details change.
+
+## Trip Segments
+
+- A trip can have 0+ segments (multi-mode trips: bike to station, train downtown, etc.)
+- `trip_segments` table: trip_id, position, start_loc, end_loc, mode, miles
+- Parent trip stores summary: start=first seg, end=last seg, mode=first seg's mode, miles=sum
+- 0 segments = flat display in trip history; has segments = expandable detail row
