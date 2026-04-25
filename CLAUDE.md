@@ -75,7 +75,7 @@ All Python commands run from repo root (pyproject.toml lives there).
 
 ```bash
 # Backend
-uv run uvicorn backend.main:app --reload --port 8000   # API on :8000
+uv run uvicorn backend.main:app --reload --port 8000   # API on :8000 (local dev)
 
 # Frontend (separate terminal)
 cd frontend && npm run dev   # Vite dev server on :5173, proxies /api → :8000
