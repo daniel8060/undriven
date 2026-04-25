@@ -4,16 +4,13 @@
 import argparse
 import getpass
 import os
-import sys
 
-# Load .env and set up paths
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from backend import config
 from backend.database import SessionLocal
 from backend.models import User, SavedCar
-import config
 
 
 def create_user(args):
