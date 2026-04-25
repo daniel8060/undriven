@@ -24,6 +24,7 @@
   --mode-train:   #2e5b8a;
   --mode-bus:     #6b4a8a;
   --mode-scooter: #c4a020;
+  --mode-car:     #5a5a5a;
   --mode-other:   #7a3a3a;
 }
 
@@ -339,6 +340,7 @@ td.mono { font-family: var(--mono); font-size: .84rem; }
 .mode-badge.train   { background: rgba(46,91,138,.15);  color: var(--mode-train); }
 .mode-badge.bus     { background: rgba(107,74,138,.15); color: var(--mode-bus); }
 .mode-badge.scooter { background: rgba(196,160,32,.15); color: var(--mode-scooter); }
+.mode-badge.car     { background: rgba(90,90,90,.15);   color: var(--mode-car); }
 .mode-badge.other   { background: rgba(122,58,58,.15);  color: var(--mode-other); }
 
 /* ── Buttons ── */

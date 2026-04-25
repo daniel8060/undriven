@@ -16,6 +16,7 @@ const MODE_COLORS: Record<string, string> = {
   train:   'rgba(46,  91,  138, 0.85)',
   bus:     'rgba(107, 74,  138, 0.85)',
   scooter: 'rgba(196, 160, 32,  0.85)',
+  car:     'rgba(90,  90,  90,  0.85)',
   other:   'rgba(122, 58,  58,  0.85)',
 };
 const MODES = Object.keys(MODE_COLORS);

@@ -71,28 +71,46 @@ def delete_trip(session: Session, trip_id: int, user_id: int) -> bool:
     return True
 
 
+def _trip_legs(trip: Trip) -> list[tuple[str, float]]:
+    """Return (mode, miles) pairs for a trip — segment-level if present, else parent."""
+    if trip.segments:
+        return [(s.mode, s.miles) for s in trip.segments]
+    return [(trip.mode, trip.miles)]
+
+
 def get_summary(session: Session, user_id: int, today: _date | None = None) -> dict:
     if today is None:
         today = _date.today()
 
-    base = session.query(Trip).filter(Trip.user_id == user_id)
-
-    total_miles = session.query(func.coalesce(func.sum(Trip.miles), 0)).filter(Trip.user_id == user_id).scalar()
-    total_co2_kg = session.query(func.coalesce(func.sum(Trip.co2_kg), 0)).filter(Trip.user_id == user_id).scalar()
-    total_trips = session.query(func.count(Trip.id)).filter(Trip.user_id == user_id).scalar()
-
-    by_mode_rows = (
-        session.query(
-            Trip.mode,
-            func.sum(Trip.miles).label("miles"),
-            func.count(Trip.id).label("trips"),
-        )
+    trips = (
+        session.query(Trip)
+        .options(selectinload(Trip.segments))
         .filter(Trip.user_id == user_id)
-        .group_by(Trip.mode)
-        .order_by(func.sum(Trip.miles).desc())
         .all()
     )
-    by_mode = [{"mode": r.mode, "miles": r.miles, "trips": r.trips} for r in by_mode_rows]
+
+    total_co2_kg = session.query(func.coalesce(func.sum(Trip.co2_kg), 0)).filter(Trip.user_id == user_id).scalar()
+    total_trips = len(trips)
+
+    # Aggregate non-car legs only — these represent miles saved.
+    mode_miles: dict[str, float] = {}
+    mode_trip_counts: dict[str, int] = {}
+    total_miles = 0.0
+    for trip in trips:
+        seen_modes: set[str] = set()
+        for mode, miles in _trip_legs(trip):
+            if mode == "car":
+                continue
+            total_miles += miles
+            mode_miles[mode] = mode_miles.get(mode, 0.0) + miles
+            seen_modes.add(mode)
+        for m in seen_modes:
+            mode_trip_counts[m] = mode_trip_counts.get(m, 0) + 1
+
+    by_mode = sorted(
+        [{"mode": m, "miles": mode_miles[m], "trips": mode_trip_counts.get(m, 0)} for m in mode_miles],
+        key=lambda r: r["miles"], reverse=True,
+    )
 
     by_car_rows = (
         session.query(
@@ -113,27 +131,20 @@ def get_summary(session: Session, user_id: int, today: _date | None = None) -> d
     for i in range(11, -1, -1):
         wstart = week_start - timedelta(weeks=i)
         wend = wstart + timedelta(days=6)
+        wstart_s, wend_s = wstart.isoformat(), wend.isoformat()
 
-        trip_count = (
-            base.filter(Trip.date >= wstart.isoformat(), Trip.date <= wend.isoformat())
-            .count()
-        )
+        trip_count = 0
+        by_mode_week: dict[str, float] = {}
+        for trip in trips:
+            if not (wstart_s <= trip.date <= wend_s):
+                continue
+            trip_count += 1
+            for mode, miles in _trip_legs(trip):
+                if mode == "car":
+                    continue
+                by_mode_week[mode] = by_mode_week.get(mode, 0.0) + miles
 
-        mode_rows = (
-            session.query(
-                Trip.mode,
-                func.coalesce(func.sum(Trip.miles), 0).label("miles"),
-            )
-            .filter(
-                Trip.user_id == user_id,
-                Trip.date >= wstart.isoformat(),
-                Trip.date <= wend.isoformat(),
-            )
-            .group_by(Trip.mode)
-            .all()
-        )
-
-        by_mode_week = {r.mode: round(r.miles, 2) for r in mode_rows}
+        by_mode_week = {m: round(v, 2) for m, v in by_mode_week.items()}
         weeks.append({
             "week": wend.strftime("%b %d"),
             "miles": round(sum(by_mode_week.values()), 2),

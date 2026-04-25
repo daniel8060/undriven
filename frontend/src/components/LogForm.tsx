@@ -2,7 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { apiFetch } from '../api';
 import AutocompleteInput from './AutocompleteInput';
 
-const MODES = ['bike', 'walk', 'train', 'bus', 'scooter', 'other'];
+const MODES = ['bike', 'walk', 'train', 'bus', 'scooter', 'car', 'other'];
 
 interface Segment {
   id: number;
