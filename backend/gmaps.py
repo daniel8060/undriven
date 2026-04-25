@@ -1,5 +1,6 @@
 import requests
-import config
+
+from backend import config
 
 GEOCODING_URL  = "https://maps.googleapis.com/maps/api/geocode/json"
 PLACES_URL     = "https://places.googleapis.com/v1/places:autocomplete"

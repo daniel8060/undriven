@@ -30,8 +30,8 @@ Runs on a Raspberry Pi (ulmo, 10.0.0.80) behind nginx + uvicorn.
 | `backend/routers/` | auth_router, trips, cars, addresses, maps |
 | `backend/migrations/` | Standalone Alembic migrations (0001–0003) |
 | `backend/tests/` | pytest suite: test_auth, test_db, test_gmaps, test_sync |
-| `gmaps.py` | Google Maps API calls (autocomplete, geocode, driving_miles) |
-| `config.py` | Env-var loading; CARS, GEOCODE_FOCUS, CO2_KG_PER_GALLON |
+| `backend/gmaps.py` | Google Maps API calls (autocomplete, geocode, driving_miles) |
+| `backend/config.py` | Env-var loading; CARS, GEOCODE_FOCUS, CO2_KG_PER_GALLON |
 | `frontend/src/` | React SPA source (pages, components, context, hooks) |
 | `frontend/src/styles/index.css` | All styles; CSS variables (--surface, --accent, etc.) |
 | `.claude/agents/` | Project-level Claude agents: deploy.md, test.md |

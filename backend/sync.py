@@ -1,13 +1,8 @@
-import sys
-import os
-
-# Ensure project root is on the path for gmaps/config imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import config
-from backend.db import insert_trip
-from gmaps import MapsError, driving_miles
 from sqlalchemy.orm import Session
+
+from backend import config
+from backend.db import insert_trip
+from backend.gmaps import MapsError, driving_miles
 
 
 def parse_car(car_raw: str, cars: dict) -> str | None:
