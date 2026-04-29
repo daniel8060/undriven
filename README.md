@@ -96,6 +96,32 @@ undriven/
     └── src/
 ```
 
+## Running locally
+
+All Python commands run from repo root (pyproject.toml lives there).
+
+```bash
+# Backend
+uv run uvicorn backend.main:app --reload --port 8000   # API on :8000 (local dev)
+
+# Frontend (separate terminal)
+cd frontend && npm run dev   # Vite dev server on :5173, proxies /api → :8000
+
+# Tests
+uv run pytest -q   # 44 tests
+
+# Migrations
+uv run alembic -c backend/migrations/alembic.ini upgrade head
+```
+
+## Auth
+
+- JWT in httpOnly cookie (`access_token`), SameSite=Lax, 30-day expiry
+- `GET /api/me` — check auth state; `POST /api/login`, `/api/signup`, `/api/logout`
+- All `/api/*` routes require auth via `get_current_user` dependency
+- Users created via CLI: `python backend/cli.py create-user <username>`, or via `/signup`
+
+
 ## Deployment
 
 The app is deployed on a Raspberry Pi (ulmo). Deploys are driven by the `deploy` Claude agent — see `.claude/agents/deploy.md` for the canonical steps. High level:

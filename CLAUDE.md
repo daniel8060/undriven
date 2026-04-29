@@ -37,16 +37,6 @@ Runs on a Raspberry Pi (ulmo, 10.0.0.80) behind nginx + uvicorn.
 | `.claude/agents/` | Project-level Claude agents: deploy.md, test.md |
 | `~/.claude/agents/ulmo.md` | System-level agent: sysadmin for ulmo |
 
-## Environment variables
-
-Loaded from `.env` at project root (not committed). Required:
-- `GOOGLE_MAPS_API_KEY` — hard fail if missing (no fallback)
-- `SECRET_KEY` — JWT signing key
-
-Optional:
-- `DATABASE_URL` — defaults to `sqlite:///instance/trips.db`
-
-`CARS`, `GEOCODE_FOCUS`, `CO2_KG_PER_GALLON` stay as Python config in `config.py`.
 
 ## Google Maps API notes
 
@@ -69,30 +59,6 @@ HTTP errors from Google should be caught and re-raised as `MapsError` (not `rais
 
 - have the deploy agent handle it
 
-## Running locally
-
-All Python commands run from repo root (pyproject.toml lives there).
-
-```bash
-# Backend
-uv run uvicorn backend.main:app --reload --port 8000   # API on :8000 (local dev)
-
-# Frontend (separate terminal)
-cd frontend && npm run dev   # Vite dev server on :5173, proxies /api → :8000
-
-# Tests
-uv run pytest -q   # 44 tests
-
-# Migrations
-uv run alembic -c backend/migrations/alembic.ini upgrade head
-```
-
-## Auth
-
-- JWT in httpOnly cookie (`access_token`), SameSite=Lax, 30-day expiry
-- `GET /api/me` — check auth state; `POST /api/login`, `/api/signup`, `/api/logout`
-- All `/api/*` routes require auth via `get_current_user` dependency
-- Users created via CLI: `python backend/cli.py create-user <username>`, or via `/signup`
 
 ## Agent Coordination
 
