@@ -56,7 +56,7 @@ def create_trip(
             if s["mode"] not in MODES:
                 raise HTTPException(status_code=400, detail=f"Unknown segment mode: {s['mode']!r}")
 
-    from gmaps import MapsError
+    from backend.gmaps import MapsError
     try:
         log_trip(
             session=db, date=body.date, start=start, end=end, mode=mode,

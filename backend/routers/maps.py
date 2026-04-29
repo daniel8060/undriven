@@ -18,7 +18,7 @@ def api_autocomplete(
     if len(q.strip()) < 2:
         return []
     try:
-        from gmaps import autocomplete
+        from backend.gmaps import autocomplete
         focus = {"lon": lon, "lat": lat} if lon is not None and lat is not None else None
         return autocomplete(q.strip(), focus=focus)
     except Exception:
@@ -32,7 +32,7 @@ def api_reverse_geocode(
     user: User = Depends(get_current_user),
 ):
     try:
-        from gmaps import reverse_geocode
+        from backend.gmaps import reverse_geocode
         return {"label": reverse_geocode(lon, lat)}
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -46,7 +46,7 @@ def api_geocode(
     if not q.strip():
         raise HTTPException(status_code=400, detail="q param required")
     try:
-        from gmaps import geocode
+        from backend.gmaps import geocode
         lon, lat = geocode(q.strip())
         return {"query": q.strip(), "lon": lon, "lat": lat}
     except Exception as e:
