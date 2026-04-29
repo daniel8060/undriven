@@ -294,7 +294,7 @@ a { color: var(--accent); text-decoration: none; }
   margin-bottom: 1.1rem;
 }
 
-.chart-wrap { position: relative; height: 200px; }
+.chart-wrap { position: relative; height: 200px; width: 100%; overflow: hidden; }
 
 /* ── Mode breakdown ── */
 .mode-rows { display: flex; flex-direction: column; gap: .65rem; }

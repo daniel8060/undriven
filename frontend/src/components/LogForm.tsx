@@ -29,7 +29,7 @@ export default function LogForm({ cars, addresses, onLogged }: Props) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [car, setCar] = useState(cars.find(c => c.is_default)?.name ?? '');
   const [notes, setNotes] = useState('');
-  const [roundTrip, setRoundTrip] = useState(false);
+  const [roundTrip, setRoundTrip] = useState(true);
   const [loading, setLoading] = useState(false);
   const [flash, setFlash] = useState<{ type: string; msg: string } | null>(null);
 
@@ -90,11 +90,11 @@ export default function LogForm({ cars, addresses, onLogged }: Props) {
         body.mode = segments[0].mode;
       }
 
-      await apiFetch('/trips', { method: 'POST', body: JSON.stringify(body) });
-      setFlash({ type: 'success', msg: 'Trip logged!' });
+      const res = await apiFetch<{ miles: number }>('/trips', { method: 'POST', body: JSON.stringify(body) });
+      setFlash({ type: 'success', msg: `Trip logged! ${res.miles.toFixed(1)} mi` });
       setSegments([{ id: segIdCounter++, start: '', end: '', mode: 'bike' }]);
       setNotes('');
-      setRoundTrip(false);
+      setRoundTrip(true);
       onLogged();
     } catch (err: unknown) {
       setFlash({ type: 'error', msg: err instanceof Error ? err.message : 'Failed to log trip' });
@@ -183,8 +183,8 @@ export default function LogForm({ cars, addresses, onLogged }: Props) {
         <div className="form-actions">
           {!isMultiSegment ? (
             <div className="trip-toggle">
-              <button type="button" className={`tt-btn${!roundTrip ? ' active' : ''}`} onClick={() => setRoundTrip(false)}>One way</button>
               <button type="button" className={`tt-btn${roundTrip ? ' active' : ''}`} onClick={() => setRoundTrip(true)}>Round trip</button>
+              <button type="button" className={`tt-btn${!roundTrip ? ' active' : ''}`} onClick={() => setRoundTrip(false)}>One way</button>
             </div>
           ) : <div />}
           <button type="submit" className="btn-log" disabled={loading}>
